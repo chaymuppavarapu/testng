@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TestNG × Selenium — Suite Runner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1420;
+  --bg-alt:#0a0f18;
+  --panel:#141d2b;
+  --panel-2:#182233;
+  --border:#25334a;
+  --border-soft:#1c2738;
+  --text:#e8edf4;
+  --text-dim:#93a4ba;
+  --text-faint:#54637a;
+  --pass:#4bb08a;
+  --pass-soft:rgba(75,176,138,0.13);
+  --fail:#e2695c;
+  --fail-soft:rgba(226,105,92,0.13);
+  --warn:#d9a441;
+  --warn-soft:rgba(217,164,65,0.13);
+  --info:#6a90d8;
+  --info-soft:rgba(106,144,216,0.13);
+  --accent:#4bb08a;
+  --radius:10px;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'IBM Plex Sans',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  font-size:15.5px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--pass-soft);color:var(--text);}
+a{color:var(--info);text-decoration:none;}
+a:hover{text-decoration:underline;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+::-webkit-scrollbar-thumb:hover{background:var(--text-faint);}
+
+/* ===== App shell ===== */
+#app{display:flex;flex-direction:column;height:100vh;}
+
+/* Topbar */
+#topbar{
+  height:56px;flex:0 0 56px;
+  display:flex;align-items:center;gap:14px;
+  padding:0 16px;
+  background:var(--bg-alt);
+  border-bottom:1px solid var(--border-soft);
+  font-family:var(--font-mono);
+  position:relative;z-index:20;
+}
+#menuBtn{
+  display:none;background:none;border:1px solid var(--border);color:var(--text-dim);
+  border-radius:6px;width:34px;height:34px;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;
+}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:600;font-size:15px;letter-spacing:.2px;white-space:nowrap;}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--pass);box-shadow:0 0 0 3px var(--pass-soft);flex:0 0 auto;}
+.brand .sub{color:var(--text-faint);font-weight:400;font-size:12.5px;font-family:var(--font-mono);}
+#topbar .spacer{flex:1;}
+#suiteSummary{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--text-dim);white-space:nowrap;}
+#suiteSummary b{color:var(--text);font-weight:600;}
+#progressTrack{width:120px;height:6px;background:var(--panel-2);border-radius:4px;overflow:hidden;border:1px solid var(--border-soft);}
+#progressFill{height:100%;width:0%;background:linear-gradient(90deg,var(--pass),#63c9a0);transition:width .4s ease;}
+@media (max-width:760px){
+  #menuBtn{display:flex;}
+  .brand .sub{display:none;}
+  #suiteSummary span.txt{display:none;}
+}
+
+/* Body layout */
+#body{flex:1;display:flex;min-height:0;}
+
+/* Sidebar */
+#sidebar{
+  width:300px;flex:0 0 300px;
+  background:var(--bg-alt);
+  border-right:1px solid var(--border-soft);
+  overflow-y:auto;padding:14px 10px 40px;
+}
+#sidebar .search{
+  display:flex;align-items:center;gap:7px;
+  background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:8px 10px;margin:2px 4px 14px;
+}
+#sidebar .search input{
+  background:none;border:none;outline:none;color:var(--text);font-family:var(--font-mono);font-size:12.5px;width:100%;
+}
+#sidebar .search svg{flex:0 0 auto;opacity:.5;}
+.group{margin-bottom:4px;}
+.group-head{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 10px;cursor:pointer;border-radius:7px;user-select:none;
+}
+.group-head:hover{background:var(--panel);}
+.group-head .caret{width:14px;height:14px;flex:0 0 auto;color:var(--text-faint);transition:transform .18s ease;}
+.group.collapsed .caret{transform:rotate(-90deg);}
+.group-head .gname{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim);font-weight:500;flex:1;}
+.group-head .gcount{font-family:var(--font-mono);font-size:10.5px;color:var(--text-faint);background:var(--panel-2);border:1px solid var(--border-soft);border-radius:20px;padding:1px 7px;}
+.group-items{overflow:hidden;transition:max-height .22s ease;}
+.group.collapsed .group-items{max-height:0!important;}
+.item{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 10px 8px 26px;border-radius:7px;cursor:pointer;
+  font-size:13px;color:var(--text-dim);
+  border-left:2px solid transparent;margin:1px 0;
+}
+.item:hover{background:var(--panel);color:var(--text);}
+.item.active{background:var(--panel-2);color:var(--text);border-left-color:var(--pass);}
+.item .status{
+  width:15px;height:15px;border-radius:50%;flex:0 0 auto;
+  border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;
+}
+.item.done .status{background:var(--pass-soft);border-color:var(--pass);}
+.item.done .status::after{content:'';width:5px;height:8px;border-right:1.6px solid var(--pass);border-bottom:1.6px solid var(--pass);transform:rotate(45deg) translate(-1px,-1px);}
+.item .tnum{font-family:var(--font-mono);color:var(--text-faint);font-size:11px;}
+
+#sidebarOverlay{display:none;}
+@media (max-width:760px){
+  #sidebar{
+    position:fixed;top:56px;left:0;bottom:0;z-index:30;
+    transform:translateX(-100%);transition:transform .22s ease;
+    box-shadow:20px 0 40px rgba(0,0,0,.4);
+  }
+  #sidebar.open{transform:translateX(0);}
+  #sidebarOverlay{
+    display:none;position:fixed;inset:56px 0 0 0;background:rgba(0,0,0,.5);z-index:25;
+  }
+  #sidebarOverlay.open{display:block;}
+}
+
+/* Main */
+#main{flex:1;overflow-y:auto;min-width:0;}
+#mainInner{max-width:840px;margin:0 auto;padding:38px 28px 100px;}
+
+.eyebrow{
+  font-family:var(--font-mono);font-size:12px;color:var(--pass);letter-spacing:.6px;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;margin-bottom:10px;
+}
+.eyebrow .sep{color:var(--text-faint);}
+h1.topic-title{
+  font-family:var(--font-display);font-size:30px;font-weight:700;margin:0 0 6px;letter-spacing:-.2px;line-height:1.2;
+}
+.topic-dek{color:var(--text-dim);font-size:15.5px;margin:0 0 22px;max-width:640px;}
+.statusline{
+  display:flex;align-items:center;gap:8px;margin-bottom:26px;padding-bottom:22px;border-bottom:1px solid var(--border-soft);
+  font-family:var(--font-mono);font-size:12px;color:var(--text-faint);
+}
+.pill{
+  font-family:var(--font-mono);font-size:11px;padding:3px 9px;border-radius:20px;border:1px solid;letter-spacing:.3px;
+}
+.pill.pass{color:var(--pass);border-color:var(--pass);background:var(--pass-soft);}
+.pill.warn{color:var(--warn);border-color:var(--warn);background:var(--warn-soft);}
+.pill.info{color:var(--info);border-color:var(--info);background:var(--info-soft);}
+
+.prose h2{font-family:var(--font-display);font-size:20px;font-weight:600;margin:34px 0 12px;letter-spacing:-.1px;}
+.prose h2:first-child{margin-top:0;}
+.prose h3{font-family:var(--font-display);font-size:16px;font-weight:600;margin:24px 0 10px;color:var(--text);}
+.prose p{margin:0 0 14px;color:#d3dbe6;}
+.prose ul,.prose ol{margin:0 0 16px;padding-left:22px;color:#d3dbe6;}
+.prose li{margin-bottom:7px;}
+.prose li::marker{color:var(--pass);}
+.prose strong{color:#fff;font-weight:600;}
+.prose code.inline{
+  font-family:var(--font-mono);background:var(--panel-2);border:1px solid var(--border-soft);
+  padding:1px 6px;border-radius:5px;font-size:.88em;color:#a9d9c4;
+}
+
+/* Code blocks */
+.code-block{
+  margin:16px 0 20px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);
+  background:var(--bg-alt);
+}
+.code-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--border);
+  font-family:var(--font-mono);font-size:11px;color:var(--text-faint);
+}
+.code-head .fname{display:flex;align-items:center;gap:8px;}
+.code-head .dots{display:flex;gap:5px;}
+.code-head .dots span{width:8px;height:8px;border-radius:50%;background:var(--border);}
+.copy-btn{
+  background:var(--panel-2);border:1px solid var(--border);color:var(--text-dim);
+  font-family:var(--font-mono);font-size:10.5px;padding:4px 9px;border-radius:6px;cursor:pointer;
+}
+.copy-btn:hover{color:var(--text);border-color:var(--text-faint);}
+.copy-btn.copied{color:var(--pass);border-color:var(--pass);}
+pre.code{
+  margin:0;padding:16px;overflow-x:auto;font-family:var(--font-mono);font-size:12.8px;line-height:1.65;color:#c7d2e0;
+}
+pre.code .c-kw{color:#7fb0e8;}
+pre.code .c-str{color:#b8d68a;}
+pre.code .c-com{color:#5c6b7d;font-style:italic;}
+pre.code .c-ann{color:#d9a441;}
+pre.code .c-cls{color:#7fd6c4;}
+pre.code .c-num{color:#e0a86a;}
+
+/* Callouts */
+.callout{
+  display:flex;gap:11px;padding:14px 16px;border-radius:var(--radius);margin:18px 0;border:1px solid;
+}
+.callout .ico{flex:0 0 auto;width:20px;height:20px;margin-top:1px;}
+.callout .body b{display:block;font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.callout .body p{margin:0;color:#d3dbe6;font-size:14px;}
+.callout .body p+p{margin-top:8px;}
+.callout.tip{border-color:rgba(75,176,138,.4);background:var(--pass-soft);}
+.callout.tip .ico,.callout.tip b{color:var(--pass);}
+.callout.pitfall{border-color:rgba(226,105,92,.4);background:var(--fail-soft);}
+.callout.pitfall .ico,.callout.pitfall b{color:var(--fail);}
+.callout.interview{border-color:rgba(217,164,65,.4);background:var(--warn-soft);}
+.callout.interview .ico,.callout.interview b{color:var(--warn);}
+.callout.info{border-color:rgba(106,144,216,.4);background:var(--info-soft);}
+.callout.info .ico,.callout.info b{color:var(--info);}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto;margin:16px 0 20px;border:1px solid var(--border);border-radius:var(--radius);}
+table.cmp{width:100%;border-collapse:collapse;font-size:13.5px;}
+table.cmp th{
+  text-align:left;background:var(--panel);color:var(--text-dim);font-family:var(--font-mono);
+  font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:10px 14px;border-bottom:1px solid var(--border);white-space:nowrap;
+}
+table.cmp td{padding:10px 14px;border-bottom:1px solid var(--border-soft);color:#d3dbe6;vertical-align:top;}
+table.cmp tr:last-child td{border-bottom:none;}
+table.cmp td code{font-family:var(--font-mono);color:#a9d9c4;font-size:.92em;}
+
+/* Execution order flow */
+.exec-flow{display:flex;flex-direction:column;gap:0;margin:18px 0 22px;}
+.exec-step{
+  display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--panel);
+  border:1px solid var(--border-soft);border-radius:8px;position:relative;
+}
+.exec-step+.exec-step{margin-top:0;}
+.exec-connector{width:1px;height:14px;background:var(--border);margin-left:26px;}
+.exec-step .badge{
+  font-family:var(--font-mono);font-size:11px;width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  background:var(--panel-2);border:1px solid var(--border);color:var(--text-dim);
+}
+.exec-step.once .badge{color:var(--info);border-color:var(--info);}
+.exec-step.many .badge{color:var(--pass);border-color:var(--pass);}
+.exec-step .label{flex:1;}
+.exec-step .ann{font-family:var(--font-mono);font-size:13px;color:var(--text);}
+.exec-step .desc{font-size:12px;color:var(--text-faint);margin-top:1px;}
+.exec-step .tag{font-family:var(--font-mono);font-size:10px;padding:2px 7px;border-radius:20px;flex:0 0 auto;}
+.exec-step.once .tag{color:var(--info);background:var(--info-soft);border:1px solid rgba(106,144,216,.4);}
+.exec-step.many .tag{color:var(--pass);background:var(--pass-soft);border:1px solid rgba(75,176,138,.4);}
+
+/* Nav footer */
+.topic-nav{
+  display:flex;justify-content:space-between;gap:14px;margin-top:44px;padding-top:22px;border-top:1px solid var(--border-soft);
+}
+.nav-btn{
+  flex:1;max-width:340px;padding:13px 16px;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--panel);cursor:pointer;text-align:left;
+}
+.nav-btn:hover{border-color:var(--text-faint);}
+.nav-btn.next{text-align:right;margin-left:auto;}
+.nav-btn .nlabel{font-family:var(--font-mono);font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.4px;}
+.nav-btn .ntitle{font-size:13.5px;color:var(--text);margin-top:3px;font-weight:500;}
+.nav-btn.disabled{opacity:.35;pointer-events:none;}
+
+/* Accordion (interview Q&A) */
+.acc-item{border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;background:var(--panel);overflow:hidden;}
+.acc-q{
+  display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;user-select:none;
+}
+.acc-q .qnum{font-family:var(--font-mono);color:var(--pass);font-size:12px;flex:0 0 auto;width:26px;}
+.acc-q .qtext{flex:1;font-size:14.5px;font-weight:500;color:var(--text);}
+.acc-q .qcaret{color:var(--text-faint);transition:transform .18s ease;flex:0 0 auto;}
+.acc-item.open .qcaret{transform:rotate(180deg);}
+.acc-a{max-height:0;overflow:hidden;transition:max-height .25s ease;}
+.acc-item.open .acc-a{max-height:2000px;}
+.acc-a-inner{padding:0 16px 16px 54px;color:#d3dbe6;font-size:13.8px;}
+.acc-a-inner p{margin:0 0 10px;}
+.acc-a-inner code.inline{font-family:var(--font-mono);background:var(--panel-2);border:1px solid var(--border-soft);padding:1px 6px;border-radius:5px;font-size:.9em;color:#a9d9c4;}
+
+/* Quiz */
+.quiz-wrap{margin-top:6px;}
+.quiz-progress{display:flex;align-items:center;gap:10px;margin-bottom:22px;font-family:var(--font-mono);font-size:12px;color:var(--text-faint);}
+.quiz-dots{display:flex;gap:5px;}
+.qdot{width:8px;height:8px;border-radius:50%;background:var(--panel-2);border:1px solid var(--border);}
+.qdot.answered{background:var(--text-faint);border-color:var(--text-faint);}
+.qdot.correct{background:var(--pass);border-color:var(--pass);}
+.qdot.incorrect{background:var(--fail);border-color:var(--fail);}
+.quiz-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:24px;}
+.quiz-assert{font-family:var(--font-mono);font-size:11.5px;color:var(--text-faint);margin-bottom:14px;}
+.quiz-q{font-size:16.5px;font-weight:500;margin-bottom:18px;line-height:1.5;}
+.quiz-opts{display:flex;flex-direction:column;gap:9px;}
+.qopt{
+  display:flex;align-items:center;gap:11px;padding:12px 14px;border:1px solid var(--border);border-radius:9px;
+  cursor:pointer;background:var(--panel-2);font-size:14px;
+}
+.qopt:hover{border-color:var(--text-faint);}
+.qopt .letter{
+  font-family:var(--font-mono);font-size:12px;width:24px;height:24px;border-radius:6px;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--border);color:var(--text-dim);
+}
+.qopt.correct{border-color:var(--pass);background:var(--pass-soft);}
+.qopt.correct .letter{background:var(--pass);color:#08120d;border-color:var(--pass);}
+.qopt.incorrect{border-color:var(--fail);background:var(--fail-soft);}
+.qopt.incorrect .letter{background:var(--fail);color:#1a0906;border-color:var(--fail);}
+.qopt.disabled{pointer-events:none;}
+.quiz-feedback{margin-top:16px;padding:13px 15px;border-radius:9px;font-family:var(--font-mono);font-size:12.8px;display:none;}
+.quiz-feedback.show{display:block;}
+.quiz-feedback.pass{background:var(--pass-soft);color:var(--pass);border:1px solid rgba(75,176,138,.4);}
+.quiz-feedback.fail{background:var(--fail-soft);color:var(--fail);border:1px solid rgba(226,105,92,.4);}
+.quiz-explain{color:var(--text-dim);font-family:var(--font-body);margin-top:8px;font-size:13.5px;}
+.quiz-footer{display:flex;justify-content:space-between;align-items:center;margin-top:20px;}
+.quiz-btn{
+  font-family:var(--font-mono);font-size:12.5px;padding:10px 18px;border-radius:8px;border:1px solid var(--border);
+  background:var(--panel-2);color:var(--text);cursor:pointer;
+}
+.quiz-btn:hover{border-color:var(--pass);color:var(--pass);}
+.quiz-btn:disabled{opacity:.3;pointer-events:none;}
+.quiz-result{text-align:center;padding:40px 20px;}
+.quiz-result .score{font-family:var(--font-display);font-size:52px;font-weight:700;color:var(--pass);}
+.quiz-result .scoretag{font-family:var(--font-mono);color:var(--text-faint);font-size:13px;margin-top:6px;}
+.quiz-result p{color:var(--text-dim);margin:16px auto 22px;max-width:420px;}
+
+/* Folder tree (architecture) */
+.ftree{font-family:var(--font-mono);font-size:13px;background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;line-height:1.9;overflow-x:auto;}
+.ftree .d{color:#7fd6c4;}
+.ftree .f{color:var(--text-dim);}
+.ftree .cm{color:var(--text-faint);}
+
+/* Misc */
+.tag-row{display:flex;flex-wrap:wrap;gap:7px;margin:16px 0;}
+.tagchip{font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);color:var(--text-dim);background:var(--panel);}
+hr.rule{border:none;border-top:1px solid var(--border-soft);margin:26px 0;}
+
+@media (max-width:600px){
+  #mainInner{padding:26px 16px 80px;}
+  h1.topic-title{font-size:24px;}
+  .topic-nav{flex-direction:column;}
+  .nav-btn{max-width:none;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <button id="menuBtn" aria-label="Toggle menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="brand"><span class="dot"></span>TestNG <span style="color:var(--text-faint)">×</span> Selenium <span class="sub">/ suite-runner.study</span></div>
+    <div class="spacer"></div>
+    <div id="suiteSummary">
+      <span class="txt">Total: <b id="sumTotal">24</b> &nbsp;Passed: <b id="sumPass" style="color:var(--pass)">0</b></span>
+      <div id="progressTrack"><div id="progressFill"></div></div>
+    </div>
+  </div>
+  <div id="body">
+    <div id="sidebarOverlay"></div>
+    <nav id="sidebar"></nav>
+    <main id="main"><div id="mainInner"></div></main>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   DATA: topics, quiz, interview Q&A
+   ========================================================= */
+const GROUPS = [
+  {id:'g1', name:'Suite 1 · Getting Started'},
+  {id:'g2', name:'Suite 2 · Annotations & Lifecycle'},
+  {id:'g3', name:'Suite 3 · Assertions'},
+  {id:'g4', name:'Suite 4 · Configuration & Control'},
+  {id:'g5', name:'Suite 5 · Execution Engine'},
+  {id:'g6', name:'Suite 6 · Interview Prep'},
+];
+
+const topics = [
+{id:'intro', group:'g1', num:1, title:'Introduction to TestNG', dek:'What TestNG actually is, where it fits in a Selenium project, and why it shows up in almost every real automation framework.',
+html:`
+<div class="prose">
+<h2>What is TestNG?</h2>
+<p><strong>TestNG</strong> (short for <strong>Test Next Generation</strong>) is a testing framework for Java, created by Cédric Beust. It was designed after JUnit and NUnit, borrowing their good ideas while removing several of their limitations — that's literally where the "NG" (Next Generation) in the name comes from.</p>
+<p>By itself, TestNG does <strong>not</strong> know anything about browsers. It doesn't open Chrome, click buttons, or find elements — that's Selenium WebDriver's job. TestNG's job is everything <em>around</em> the test: deciding <em>which</em> tests run, in <em>what order</em>, with <em>what data</em>, how failures are reported, and what happens before/after each test. Selenium supplies the browser automation; TestNG supplies the test <em>structure and control</em>.</p>
+<div class="tag-row">
+  <span class="tagchip">Test framework</span>
+  <span class="tagchip">Java</span>
+  <span class="tagchip">Annotation-driven</span>
+  <span class="tagchip">Open source</span>
+  <span class="tagchip">Inspired by JUnit + NUnit</span>
+</div>
+<h2>Where TestNG sits in a Selenium project</h2>
+<p>A typical Selenium + TestNG stack looks like this:</p>
+<div class="code-block">
+<div class="code-head"><div class="fname"><div class="dots"><span></span><span></span><span></span></div>&nbsp; layers.txt</div></div>
+<pre class="code"><span class="c-com">Selenium WebDriver   → drives the browser (click, type, navigate)
+TestNG               → structures, sequences and reports the tests
+Maven / Gradle       → manages dependencies and runs the build
+Jenkins / GitHub CI   → triggers the suite automatically on every commit</span></pre>
+</div>
+<p>TestNG is the layer that turns a pile of individual Selenium scripts into an organised, repeatable, reportable <strong>test suite</strong> — which is exactly what an interviewer means when they ask "how is your automation framework structured?"</p>
+<h2>Core capabilities at a glance</h2>
+<ul>
+<li><strong>Annotations</strong> — <code class="inline">@Test</code>, <code class="inline">@BeforeMethod</code>, <code class="inline">@BeforeClass</code>, etc. control setup, execution and teardown.</li>
+<li><strong>Flexible test configuration</strong> — a single XML file (<code class="inline">testng.xml</code>) can group, include, exclude and order tests without touching code.</li>
+<li><strong>Data-driven testing</strong> — <code class="inline">@DataProvider</code> and <code class="inline">@Parameters</code> feed the same test method different inputs.</li>
+<li><strong>Parallel execution</strong> — methods, classes, or whole test tags can run concurrently to cut execution time.</li>
+<li><strong>Built-in HTML/XML reports</strong> — generated automatically after every run, no extra plugin required.</li>
+<li><strong>Assertions</strong> — hard and soft assertions to verify expected behaviour.</li>
+<li><strong>Listeners &amp; Retry logic</strong> — hook into the test lifecycle and automatically re-run flaky tests.</li>
+</ul>
+<div class="callout tip">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <div class="body"><b>Mental model</b><p>Selenium answers "how do I interact with the page?" TestNG answers "how do I organise, run, and report on hundreds of these interactions reliably?" You need both — they solve different problems.</p></div>
+</div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"Is TestNG a testing tool or a framework?" — It's a <strong>testing framework</strong>: it doesn't test anything by itself, it provides the structure (annotations, runner, reporting) that your Selenium test <em>code</em> plugs into.</p></div>
+</div>
+</div>
+`},
+
+{id:'why-testng', group:'g1', num:2, title:'Why TestNG Was Introduced', dek:'JUnit came first — so what problem was big enough that the Selenium community largely moved to TestNG instead?',
+html:`
+<div class="prose">
+<h2>The gap TestNG was built to close</h2>
+<p>When Selenium automation started scaling from "a few scripts" to "hundreds of end-to-end tests," teams using plain JUnit (particularly older JUnit 3/4) kept hitting the same walls:</p>
+<ul>
+<li>No easy way to run <strong>setup once per test class</strong> vs <strong>once per suite</strong> vs <strong>once per method</strong> — JUnit's lifecycle was comparatively rigid.</li>
+<li>No native way to mark a test as <strong>dependent</strong> on another test (e.g. don't attempt "checkout" if "login" failed).</li>
+<li>No built-in <strong>grouping</strong> mechanism to run only "smoke" tests or only "regression" tests.</li>
+<li>Passing the <strong>same test data</strong> through multiple values meant writing separate test methods or clunky workarounds.</li>
+<li><strong>Parallel execution</strong> of browser tests (crucial once a suite takes an hour to run sequentially) wasn't a first-class feature.</li>
+<li>Configuring <strong>which tests to include/exclude</strong> for a given run meant editing code, not a config file.</li>
+</ul>
+<p>Cédric Beust built TestNG specifically to give Java developers the flexibility that C#'s NUnit already had, plus new ideas of his own — hence "Next Generation": it was JUnit's ideas, generationally improved for exactly this kind of large, data-heavy, dependency-heavy automation suite.</p>
+<h2>What Selenium teams specifically needed</h2>
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th>Real-world need</th><th>TestNG feature that solves it</th></tr>
+<tr><td>Open the browser once, run 50 tests, close it once</td><td><code>@BeforeSuite</code> / <code>@AfterSuite</code></td></tr>
+<tr><td>Run only "Sanity" tests before a release</td><td>Groups (<code>groups={"sanity"}</code>)</td></tr>
+<tr><td>Test a login form with 20 different credential pairs</td><td><code>@DataProvider</code></td></tr>
+<tr><td>Run the full regression suite in 15 minutes instead of 2 hours</td><td>Parallel execution (methods/classes/tests)</td></tr>
+<tr><td>Skip "Place Order" if "Add to Cart" already failed</td><td><code>dependsOnMethods</code></td></tr>
+<tr><td>Auto re-run a test that failed due to a flaky element load</td><td>Retry Analyzer</td></tr>
+<tr><td>Get a shareable pass/fail report after every CI run</td><td>Built-in HTML/XML reporting</td></tr>
+</table>
+</div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"Why did your team choose TestNG over JUnit for the Selenium framework?" — A strong answer names 2-3 concrete features (grouping, DataProvider, parallel execution) rather than a vague "it's more powerful," because that's what interviewers are actually listening for.</p></div>
+</div>
+</div>
+`},
+{id:'vs-junit', group:'g1', num:3, title:'Advantages Over JUnit', dek:'A feature-by-feature comparison — the exact table most interviewers want you to be able to recite.',
+html:`
+<div class="prose">
+<h2>Side-by-side comparison</h2>
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th>Capability</th><th>JUnit</th><th>TestNG</th></tr>
+<tr><td>Test grouping</td><td>Limited (tags/categories vary by version)</td><td>Native <code>groups</code> attribute on <code>@Test</code></td></tr>
+<tr><td>Test dependency</td><td>Not natively supported</td><td><code>dependsOnMethods</code>, <code>dependsOnGroups</code></td></tr>
+<tr><td>Parameterization</td><td>Needs <code>@ParameterizedTest</code> + separate source annotations (JUnit 5)</td><td><code>@Parameters</code> (from XML) and <code>@DataProvider</code> (from code) built in</td></tr>
+<tr><td>Parallel execution</td><td>Possible but more configuration-heavy</td><td>Native — parallel by methods, classes, tests, or instances via XML</td></tr>
+<tr><td>Setup/teardown granularity</td><td><code>@BeforeEach</code>/<code>@AfterEach</code>, <code>@BeforeAll</code>/<code>@AfterAll</code></td><td>7 levels: Suite, Test, Class, Method (before &amp; after each)</td></tr>
+<tr><td>Test configuration</td><td>Mostly annotation/code driven</td><td>Rich <code>testng.xml</code> — include/exclude tests without touching code</td></tr>
+<tr><td>Soft assertions</td><td>Not built in (needs extra library)</td><td>Built-in <code>SoftAssert</code> class</td></tr>
+<tr><td>Retry failed tests</td><td>Needs external extension</td><td>Built-in <code>IRetryAnalyzer</code> interface</td></tr>
+<tr><td>Reporting</td><td>Basic; usually needs Surefire/HTML plugins</td><td>Rich HTML + XML report generated automatically</td></tr>
+<tr><td>Priority/ordering</td><td>Not native (needs <code>@Order</code> in JUnit 5, still limited)</td><td><code>priority</code> attribute directly on <code>@Test</code></td></tr>
+</table>
+</div>
+<h2>The honest picture</h2>
+<p>JUnit 5 has closed some of this gap (it now has <code class="inline">@Order</code>, tags, and parameterized tests), so a fair interview answer isn't "JUnit is bad" — it's that <strong>TestNG was purpose-built for exactly the flexibility that large end-to-end/UI automation suites need**, and most of that flexibility is native rather than bolted on. That's why the vast majority of Selenium-based frameworks in industry — especially anything with a Page Object Model, data-driven suites, and CI parallelization — default to TestNG.</p>
+<div class="callout tip">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <div class="body"><b>How to phrase this in an interview</b><p>Lead with the concrete pain points TestNG solves — <code class="inline">dependsOnMethods</code>, <code class="inline">@DataProvider</code>, parallel execution, soft asserts, retry analyzer — rather than a generic "TestNG is more powerful." Specificity is what separates a memorized answer from real experience.</p></div>
+</div>
+</div>
+`},
+
+{id:'install', group:'g1', num:4, title:'Installing TestNG', dek:'Getting TestNG into a Java + Selenium project via Maven, Gradle, or the Eclipse/IntelliJ plugin.',
+html:`
+<div class="prose">
+<h2>Option 1 — Maven (most common in real frameworks)</h2>
+<p>Add the TestNG dependency to your <code class="inline">pom.xml</code>. This is what you'll see in almost every real-world Selenium framework:</p>
+<div class="code-block">
+<div class="code-head"><div class="fname"><div class="dots"><span></span><span></span><span></span></div>&nbsp; pom.xml</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">&lt;dependencies&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.testng&lt;/groupId&gt;
+        &lt;artifactId&gt;testng&lt;/artifactId&gt;
+        &lt;version&gt;7.10.2&lt;/version&gt;
+        &lt;scope&gt;test&lt;/scope&gt;
+    &lt;/dependency&gt;
+&lt;/dependencies&gt;</pre>
+</div>
+<p>Run <code class="inline">mvn clean test</code> from the terminal and Maven's Surefire plugin will discover and execute your TestNG tests automatically.</p>
+<h2>Option 2 — Gradle</h2>
+<div class="code-block">
+<div class="code-head"><div class="fname"><div class="dots"><span></span><span></span><span></span></div>&nbsp; build.gradle</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">dependencies {
+    testImplementation 'org.testng:testng:7.10.2'
+}
+
+test {
+    useTestNG()
+}</pre>
+</div>
+<h2>Option 3 — Eclipse / IntelliJ plugin (for the IDE runner + testng.xml support)</h2>
+<ul>
+<li><strong>Eclipse:</strong> Help → Eclipse Marketplace → search "TestNG for Eclipse" → Install → restart.</li>
+<li><strong>IntelliJ IDEA:</strong> TestNG support is bundled in the Ultimate edition and available as a plugin in Community edition (File → Settings → Plugins → search "TestNG").</li>
+</ul>
+<p>The plugin gives you right-click "Run as TestNG Test," a dedicated results panel, and the ability to right-click a <code class="inline">testng.xml</code> file and run the whole suite directly.</p>
+<div class="callout pitfall">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <div class="body"><b>Common setup mistake</b><p>Adding the TestNG jar manually to the classpath but forgetting to add it as a "Library" in the IDE's project structure — the IDE will compile fine but won't recognise <code class="inline">@Test</code> as runnable. Always let Maven/Gradle manage the dependency so the IDE indexes it correctly.</p></div>
+</div>
+</div>
+`},
+{id:'first-test', group:'g1', num:5, title:'Creating the First Test', dek:'Wiring TestNG and Selenium WebDriver together into one runnable test class.',
+html:`
+<div class="prose">
+<h2>A minimal, real Selenium + TestNG test</h2>
+<p>This is the shape almost every TestNG test class takes: open the browser before the test, run the actual test logic in a <code class="inline">@Test</code> method, close the browser afterwards.</p>
+<div class="code-block">
+<div class="code-head"><div class="fname"><div class="dots"><span></span><span></span><span></span></div>&nbsp; FirstTest.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
+public class FirstTest {
+
+    WebDriver driver;
+
+    @BeforeMethod
+    public void setUp() {
+        driver = new ChromeDriver();
+        driver.manage().window().maximize();
+        driver.get("https://example.com");
+    }
+
+    @Test
+    public void pageTitleShouldMatch() {
+        String actualTitle = driver.getTitle();
+        Assert.assertEquals(actualTitle, "Example Domain",
+                "Page title did not match expected value");
+    }
+
+    @AfterMethod
+    public void tearDown() {
+        if (driver != null) {
+            driver.quit();
+        }
+    }
+}</pre>
+</div>
+<h2>What happens when you run it</h2>
+<div class="exec-flow">
+<div class="exec-step once"><div class="badge">1</div><div class="label"><div class="ann">setUp() — @BeforeMethod</div><div class="desc">Chrome launches, window maximizes, navigates to the page</div></div><div class="tag">before</div></div>
+<div class="exec-connector"></div>
+<div class="exec-step many"><div class="badge">2</div><div class="label"><div class="ann">pageTitleShouldMatch() — @Test</div><div class="desc">Actual title is compared against the expected string</div></div><div class="tag">test</div></div>
+<div class="exec-connector"></div>
+<div class="exec-step once"><div class="badge">3</div><div class="label"><div class="ann">tearDown() — @AfterMethod</div><div class="desc">Browser closes regardless of pass/fail</div></div><div class="tag">after</div></div>
+</div>
+<h2>Running it</h2>
+<ul>
+<li><strong>From the IDE:</strong> right-click the class → Run As → TestNG Test.</li>
+<li><strong>From Maven:</strong> <code class="inline">mvn clean test</code> (Surefire auto-discovers TestNG tests).</li>
+<li><strong>Via testng.xml:</strong> right-click the XML file → Run — useful once you have more than one test class (covered later).</li>
+</ul>
+<p>After the run, TestNG generates a report at <code class="inline">test-output/index.html</code> — open it in a browser to see a full pass/fail breakdown, exactly like the status pills used throughout this site.</p>
+<div class="callout tip">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <div class="body"><b>Why @BeforeMethod / @AfterMethod here?</b><p>Using method-level setup/teardown means <strong>every test gets a fresh browser</strong> — tests can't leak state (like a leftover login session) into each other. This is the safest default; you'll see later how <code class="inline">@BeforeClass</code> trades some of that isolation for speed.</p></div>
+</div>
+</div>
+`},
+{id:'annotations', group:'g2', num:6, title:'TestNG Annotations', dek:'The nine lifecycle annotations that control exactly when your setup, teardown, and test code run — the single most-asked topic in TestNG interviews.',
+html:`
+<div class="prose">
+<h2>The full lifecycle, in order</h2>
+<p>TestNG annotations exist to answer one question at different scopes: <strong>"when should this method run?"</strong> The scopes nest inside each other like Russian dolls: Suite → Test → Class → Method. Here's the complete execution order for a suite with one &lt;test&gt; containing one class with two <code class="inline">@Test</code> methods:</p>
+<div class="exec-flow">
+<div class="exec-step once"><div class="badge">1</div><div class="label"><div class="ann">@BeforeSuite</div><div class="desc">Runs once, before anything else in the whole testng.xml suite</div></div><div class="tag">once / suite</div></div>
+<div class="exec-connector"></div>
+<div class="exec-step once"><div class="badge">2</div><div class="label"><div class="ann">@BeforeTest</div><div class="desc">Runs once per &lt;test&gt; tag in testng.xml (can span multiple classes)</div></div><div class="tag">once / test-tag</div></div>
+<div class="exec-connector"></div>
+<div class="exec-step once"><div class="badge">3</div><div class="label"><div class="ann">@BeforeClass</div><div class="desc">Runs once before the first test method of this class runs</div></div><div class="tag">once / class</div></div>
+<div class="exec-connector"></div>
+<div class="exec-step many"><div class="badge">4</div><div class="label"><div class="ann">@BeforeMethod</div><div class="desc">Runs before EVERY @Test method</div></div><div class="tag">every method</div></div>
+<div class="exec-connector"></div>
+<div class="exec-step many"><div class="badge">5</div><div class="label"><div class="ann">@Test #1</div><div class="desc">First test method executes</div></div><div class="tag">test</div></div>
+<div class="exec-connector"></div>
+<div class="exec-step many"><div class="badge">6</div><div class="label"><div class="ann">@AfterMethod</div><div class="desc">Runs after EVERY @Test method</div></div><div class="tag">every method</div></div>
+<div class="exec-connector"></div>
+<div class="exec-step many"><div class="badge">7</div><div class="label"><div class="ann">@BeforeMethod → @Test #2 → @AfterMethod</div><div class="desc">The Before/After Method pair repeats for the second test</div></div><div class="tag">repeats</div></div>
+<div class="exec-connector"></div>
+<div class="exec-step once"><div class="badge">8</div><div class="label"><div class="ann">@AfterClass</div><div class="desc">Runs once after all test methods in this class finish</div></div><div class="tag">once / class</div></div>
+<div class="exec-connector"></div>
+<div class="exec-step once"><div class="badge">9</div><div class="label"><div class="ann">@AfterTest</div><div class="desc">Runs once after all classes inside this &lt;test&gt; tag finish</div></div><div class="tag">once / test-tag</div></div>
+<div class="exec-connector"></div>
+<div class="exec-step once"><div class="badge">10</div><div class="label"><div class="ann">@AfterSuite</div><div class="desc">Runs once, after everything in the suite has finished</div></div><div class="tag">once / suite</div></div>
+</div>
+<div class="callout tip">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <div class="body"><b>Memory trick</b><p>Read the annotation names literally: <strong>Suite &gt; Test &gt; Class &gt; Method</strong> is the nesting order, widest scope first. "Before" always fires going <em>outside-in</em> (Suite → Test → Class → Method) and "After" always fires <em>inside-out</em> (Method → Class → Test → Suite) — it's symmetric, like opening and closing brackets.</p></div>
+</div>
+
+<h2>Each annotation explained</h2>
+
+<h3>@Test</h3>
+<p>Marks a method as an actual test case. This is the only annotation that TestNG counts toward pass/fail/skip totals.</p>
+<div class="code-block"><div class="code-head"><div class="fname">Test.java</div></div><pre class="code">@Test
+public void loginWithValidCredentials() {
+    // test logic
+}</pre></div>
+
+<h3>@BeforeMethod / @AfterMethod</h3>
+<p>Run immediately before/after <strong>each</strong> <code class="inline">@Test</code> method in the class. Best place for per-test setup like navigating to a fresh page, or per-test cleanup like clearing cookies.</p>
+<div class="code-block"><div class="code-head"><div class="fname">Lifecycle.java</div></div><pre class="code">@BeforeMethod
+public void openBrowser() { driver = new ChromeDriver(); }
+
+@AfterMethod
+public void closeBrowser() { driver.quit(); }</pre></div>
+
+<h3>@BeforeClass / @AfterClass</h3>
+<p>Run <strong>once</strong> before the first test / after the last test <em>in that class</em>, no matter how many <code class="inline">@Test</code> methods it has. Ideal for expensive one-time setup shared safely across tests in the same class — e.g. logging in once, then running several tests against the logged-in session.</p>
+
+<h3>@BeforeTest / @AfterTest</h3>
+<p>Scoped to the <code class="inline">&lt;test&gt;</code> tag in <code class="inline">testng.xml</code>, which can group <strong>multiple classes</strong> together. Runs once per <code class="inline">&lt;test&gt;</code> tag, regardless of how many classes/methods are inside it.</p>
+
+<h3>@BeforeSuite / @AfterSuite</h3>
+<p>The widest scope — runs exactly once for the entire <code class="inline">testng.xml</code> file, before/after every test in every class in every <code class="inline">&lt;test&gt;</code> tag. Common uses: starting a Selenium Grid session, reading global config, sending a Slack notification when the whole run finishes.</p>
+
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th>Annotation</th><th>Scope</th><th>Runs</th><th>Typical use</th></tr>
+<tr><td><code>@BeforeSuite</code></td><td>Whole suite</td><td>Once</td><td>Start Grid / global config</td></tr>
+<tr><td><code>@BeforeTest</code></td><td>&lt;test&gt; tag</td><td>Once per tag</td><td>Set browser type for this &lt;test&gt;</td></tr>
+<tr><td><code>@BeforeClass</code></td><td>Class</td><td>Once per class</td><td>Login once, reuse session</td></tr>
+<tr><td><code>@BeforeMethod</code></td><td>Method</td><td>Before every @Test</td><td>Fresh page navigation</td></tr>
+<tr><td><code>@Test</code></td><td>—</td><td>—</td><td>The actual assertion logic</td></tr>
+<tr><td><code>@AfterMethod</code></td><td>Method</td><td>After every @Test</td><td>Screenshot on failure</td></tr>
+<tr><td><code>@AfterClass</code></td><td>Class</td><td>Once per class</td><td>Logout / close session</td></tr>
+<tr><td><code>@AfterTest</code></td><td>&lt;test&gt; tag</td><td>Once per tag</td><td>Merge per-browser results</td></tr>
+<tr><td><code>@AfterSuite</code></td><td>Whole suite</td><td>Once</td><td>Send report email, quit Grid</td></tr>
+</table>
+</div>
+
+<div class="callout pitfall">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <div class="body"><b>Common mistake</b><p>Using <code class="inline">@BeforeClass</code> to open one browser for the whole class to "save time," then finding tests fail unpredictably when run in a different order — because one test left the browser on the wrong page/state for the next. If tests must be fully independent, pay the cost and use <code class="inline">@BeforeMethod</code>.</p></div>
+</div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"What's the difference between <code class="inline">@BeforeTest</code> and <code class="inline">@BeforeClass</code>?" — <code class="inline">@BeforeClass</code> is scoped to one Java class; <code class="inline">@BeforeTest</code> is scoped to a <code class="inline">&lt;test&gt;</code> tag in testng.xml, which can wrap <strong>several</strong> classes. If your XML puts 3 classes in one &lt;test&gt; tag, <code class="inline">@BeforeTest</code> runs once total, but <code class="inline">@BeforeClass</code> runs once per class (3 times).</p></div>
+</div>
+</div>
+`},
+{id:'priority', group:'g2', num:7, title:'Priority', dek:'Controlling the order @Test methods execute in — and why relying on it too heavily is a design smell.',
+html:`
+<div class="prose">
+<h2>Why order matters (and the default is dangerous)</h2>
+<p>By default, TestNG does <strong>not</strong> guarantee <code class="inline">@Test</code> methods run in the order they're written in the source file. Historically it ran them in <strong>alphabetical order of method name</strong> by default — which means "testLogin" could easily run after "testCheckout" purely because of naming. The <code class="inline">priority</code> attribute exists to make execution order explicit instead of accidental.</p>
+<div class="code-block">
+<div class="code-head"><div class="fname">PriorityDemo.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">public class PriorityDemo {
+
+    @Test(priority = 1)
+    public void login() {
+        System.out.println("Step 1: Login");
+    }
+
+    @Test(priority = 2)
+    public void addToCart() {
+        System.out.println("Step 2: Add to cart");
+    }
+
+    @Test(priority = 3)
+    public void checkout() {
+        System.out.println("Step 3: Checkout");
+    }
+}</pre>
+</div>
+<ul>
+<li>Lower numbers run <strong>first</strong>. Default priority (if unspecified) is <code class="inline">0</code>.</li>
+<li>Methods with the <strong>same priority</strong> fall back to alphabetical order of method name.</li>
+<li>Priority can be negative — useful for forcing a method to always run before the unprioritized (priority 0) ones.</li>
+</ul>
+<h2>Priority vs dependsOnMethods</h2>
+<p>Priority only controls <strong>order</strong> — it does not stop a later test from running if an earlier one fails. If <code class="inline">login()</code> fails, <code class="inline">addToCart()</code> still executes (and likely fails for unrelated reasons, polluting your report). If you need "skip this test if that one failed," that's <code class="inline">dependsOnMethods</code>, covered later — not priority.</p>
+<div class="callout pitfall">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <div class="body"><b>Design smell to flag in an interview</b><p>Heavy reliance on <code class="inline">priority</code> to chain business steps (login → cart → checkout) usually means the tests aren't actually independent — a good answer acknowledges this trade-off: it's fine for a deliberate end-to-end flow, but each test ideally should be able to run standalone. Best practice: keep unrelated tests independent, and only order tests that are genuinely steps of one flow.</p></div>
+</div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"What's the default priority in TestNG, and what happens with duplicate priorities?" — Default is <code class="inline">0</code>; when two methods share a priority, TestNG orders them alphabetically by method name as a tiebreaker.</p></div>
+</div>
+</div>
+`},
+
+{id:'assertions', group:'g3', num:8, title:'Assertions — Hard vs Soft', dek:'How TestNG actually decides pass or fail, and the one soft-assertion mistake that silently ruins a report.',
+html:`
+<div class="prose">
+<h2>Hard Assertions (the default)</h2>
+<p>TestNG's <code class="inline">org.testng.Assert</code> class provides <strong>hard assertions</strong>: the moment one fails, it throws an <code class="inline">AssertionError</code> and the test method <strong>stops immediately</strong> — any code after the failed assertion never runs.</p>
+<div class="code-block">
+<div class="code-head"><div class="fname">HardAssertDemo.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">import org.testng.Assert;
+
+@Test
+public void verifyPageTitleAndUrl() {
+    Assert.assertEquals(driver.getTitle(), "Dashboard");   // if this fails...
+    Assert.assertTrue(driver.getCurrentUrl().contains("/home")); // ...this line never runs
+}</pre>
+</div>
+<h3>Common hard assertion methods</h3>
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th>Method</th><th>Checks</th></tr>
+<tr><td><code>assertEquals(actual, expected)</code></td><td>Values are equal</td></tr>
+<tr><td><code>assertNotEquals(actual, expected)</code></td><td>Values are NOT equal</td></tr>
+<tr><td><code>assertTrue(condition)</code></td><td>Condition is true</td></tr>
+<tr><td><code>assertFalse(condition)</code></td><td>Condition is false</td></tr>
+<tr><td><code>assertNull(object)</code></td><td>Object is null</td></tr>
+<tr><td><code>assertNotNull(object)</code></td><td>Object is not null</td></tr>
+<tr><td><code>fail("message")</code></td><td>Forces an immediate failure</td></tr>
+</table>
+</div>
+<h2>Soft Assertions</h2>
+<p>A <strong>soft assertion</strong> records a failure but lets the test <strong>keep running</strong>, so you can collect multiple failures from one test method — useful when checking many fields on a page (name, price, stock, image, etc.) and you want the full picture in one run, not one field at a time across five re-runs.</p>
+<div class="code-block">
+<div class="code-head"><div class="fname">SoftAssertDemo.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">import org.testng.asserts.SoftAssert;
+
+@Test
+public void verifyProductDetails() {
+    SoftAssert softAssert = new SoftAssert();
+
+    softAssert.assertEquals(product.getName(), "Wireless Mouse");
+    softAssert.assertEquals(product.getPrice(), "$19.99");
+    softAssert.assertTrue(product.isInStock());
+
+    softAssert.assertAll();   // <-- REQUIRED: reports all collected failures here
+}</pre>
+</div>
+<div class="callout pitfall">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <div class="body"><b>The #1 soft-assert mistake</b><p>Forgetting to call <code class="inline">softAssert.assertAll()</code> at the end. Without it, TestNG never actually raises the collected failures — the test is reported as <strong>passed</strong> even though assertions inside it failed. Always call <code class="inline">assertAll()</code> as the very last line.</p></div>
+</div>
+<h2>Hard vs Soft — when to use which</h2>
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th></th><th>Hard Assert</th><th>Soft Assert</th></tr>
+<tr><td>Stops on first failure?</td><td>Yes</td><td>No — continues, reports all at the end</td></tr>
+<tr><td>Class</td><td><code>org.testng.Assert</code></td><td><code>org.testng.asserts.SoftAssert</code></td></tr>
+<tr><td>Best for</td><td>Sequential checks where step 2 is meaningless if step 1 failed (e.g. login must succeed before checking dashboard)</td><td>Independent checks on the same page/object (e.g. validating 5 unrelated form fields)</td></tr>
+<tr><td>Requires</td><td>Nothing extra</td><td><code>assertAll()</code> call at the end</td></tr>
+</table>
+</div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"When would you use soft assertions over hard assertions?" — When you want visibility into <em>every</em> failure in a single run instead of fixing-and-rerunning one failure at a time — e.g. validating multiple fields on a form or dashboard where the checks don't depend on each other.</p></div>
+</div>
+</div>
+`},
+{id:'testng-xml', group:'g4', num:9, title:'testng.xml', dek:'The control-panel file that lets you include, exclude, group, and order tests without ever touching Java code.',
+html:`
+<div class="prose">
+<h2>Why testng.xml exists</h2>
+<p>Instead of hardcoding "run these classes, in this order, with these groups" inside Java, TestNG lets you describe the whole run in one XML file. This is what CI pipelines (Jenkins, GitHub Actions) usually point at, and it's what lets QA leads reconfigure a suite (e.g. "run only smoke tests tonight") without a code change or redeploy.</p>
+<h2>Anatomy of a suite file</h2>
+<div class="code-block">
+<div class="code-head"><div class="fname">testng.xml</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">&lt;!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd"&gt;
+&lt;suite name="RegressionSuite" parallel="tests" thread-count="2"&gt;
+
+    &lt;test name="ChromeTests"&gt;
+        &lt;parameter name="browser" value="chrome"/&gt;
+        &lt;groups&gt;
+            &lt;run&gt;
+                &lt;include name="smoke"/&gt;
+                &lt;exclude name="broken"/&gt;
+            &lt;/run&gt;
+        &lt;/groups&gt;
+        &lt;classes&gt;
+            &lt;class name="tests.LoginTest"/&gt;
+            &lt;class name="tests.CheckoutTest"/&gt;
+        &lt;/classes&gt;
+    &lt;/test&gt;
+
+    &lt;test name="FirefoxTests"&gt;
+        &lt;parameter name="browser" value="firefox"/&gt;
+        &lt;classes&gt;
+            &lt;class name="tests.LoginTest"/&gt;
+        &lt;/classes&gt;
+    &lt;/test&gt;
+
+&lt;/suite&gt;</pre>
+</div>
+<h2>Key building blocks</h2>
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th>Tag</th><th>Purpose</th></tr>
+<tr><td><code>&lt;suite&gt;</code></td><td>The root element — one XML file, one suite. Controls suite-wide <code>parallel</code> and <code>thread-count</code>.</td></tr>
+<tr><td><code>&lt;test&gt;</code></td><td>A logical group of classes — e.g. "run these classes against Chrome." Maps directly to <code>@BeforeTest</code>/<code>@AfterTest</code> scope.</td></tr>
+<tr><td><code>&lt;classes&gt;</code> / <code>&lt;class&gt;</code></td><td>Which Java classes to include in this &lt;test&gt;.</td></tr>
+<tr><td><code>&lt;methods&gt;</code> / <code>&lt;include&gt;</code>/<code>&lt;exclude&gt;</code></td><td>Cherry-pick individual methods within a class.</td></tr>
+<tr><td><code>&lt;groups&gt;</code></td><td>Run only methods tagged with certain group names (e.g. "smoke", "regression").</td></tr>
+<tr><td><code>&lt;parameter&gt;</code></td><td>Pass a named value into <code>@Parameters</code>-annotated test methods.</td></tr>
+<tr><td><code>&lt;packages&gt;</code></td><td>Include every test class inside a Java package, instead of listing classes one by one.</td></tr>
+</table>
+</div>
+<h2>Running it</h2>
+<p>Right-click the file in Eclipse/IntelliJ → <strong>Run</strong>, or from the command line:</p>
+<div class="code-block"><div class="code-head"><div class="fname">terminal</div></div><pre class="code">java -cp "lib/*" org.testng.TestNG testng.xml</pre></div>
+<p>Maven projects usually wire this in automatically via the Surefire plugin config:</p>
+<div class="code-block"><div class="code-head"><div class="fname">pom.xml (snippet)</div></div><pre class="code">&lt;plugin&gt;
+    &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+    &lt;artifactId&gt;maven-surefire-plugin&lt;/artifactId&gt;
+    &lt;configuration&gt;
+        &lt;suiteXmlFiles&gt;
+            &lt;suiteXmlFile&gt;testng.xml&lt;/suiteXmlFile&gt;
+        &lt;/suiteXmlFiles&gt;
+    &lt;/configuration&gt;
+&lt;/plugin&gt;</pre></div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"How do you run only a subset of tests without changing code?" — Point directly to testng.xml: use <code class="inline">&lt;groups&gt;</code> to include/exclude, or list only the specific <code class="inline">&lt;class&gt;</code>/<code class="inline">&lt;methods&gt;</code> you need. This is exactly why testng.xml exists.</p></div>
+</div>
+</div>
+`},
+
+{id:'depends-on-methods', group:'g4', num:10, title:'dependsOnMethods', dek:'Making one test depend on another passing first — and understanding the cascading-skip behaviour interviewers love to probe.',
+html:`
+<div class="prose">
+<h2>The problem it solves</h2>
+<p>Some tests genuinely represent sequential steps of one flow — e.g. you cannot meaningfully "add to cart" if "login" failed. Running <code class="inline">addToCart()</code> anyway would just produce a confusing, unrelated failure. <code class="inline">dependsOnMethods</code> tells TestNG: "only run this test if the one(s) it depends on passed."</p>
+<div class="code-block">
+<div class="code-head"><div class="fname">DependsDemo.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">public class DependsDemo {
+
+    @Test
+    public void login() {
+        System.out.println("Logging in...");
+        // if this fails, everything below is SKIPPED, not failed
+    }
+
+    @Test(dependsOnMethods = "login")
+    public void addToCart() {
+        System.out.println("Adding item to cart...");
+    }
+
+    @Test(dependsOnMethods = "addToCart")
+    public void checkout() {
+        System.out.println("Checking out...");
+    }
+}</pre>
+</div>
+<h2>The cascading-skip behaviour</h2>
+<p>This is the part interviewers specifically probe: if <code class="inline">login()</code> <strong>fails</strong>, TestNG does not attempt <code class="inline">addToCart()</code> at all — it marks it <strong>SKIPPED</strong> (not failed). And since <code class="inline">checkout()</code> depends on <code class="inline">addToCart()</code>, it is skipped too. One failure cascades cleanly down the whole dependency chain instead of producing three misleading failures.</p>
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th>login()</th><th>addToCart()</th><th>checkout()</th></tr>
+<tr><td style="color:var(--pass)">PASS</td><td style="color:var(--pass)">PASS</td><td style="color:var(--pass)">PASS</td></tr>
+<tr><td style="color:var(--fail)">FAIL</td><td style="color:var(--warn)">SKIP</td><td style="color:var(--warn)">SKIP</td></tr>
+</table>
+</div>
+<h2>Depending on multiple methods</h2>
+<div class="code-block"><div class="code-head"><div class="fname">MultiDepends.java</div></div><pre class="code">@Test(dependsOnMethods = { "login", "loadInventory" })
+public void addToCart() {
+    // runs only if BOTH login() and loadInventory() passed
+}</pre></div>
+<h2>Cross-class dependencies</h2>
+<p>You can depend on a method in a different class by fully qualifying it:</p>
+<div class="code-block"><div class="code-head"><div class="fname">CrossClass.java</div></div><pre class="code">@Test(dependsOnMethods = "com.tests.LoginTest.login")
+public void addToCart() { ... }</pre></div>
+<h2>alwaysRun — the escape hatch</h2>
+<p>Sometimes you want a dependent test (often cleanup) to run <strong>even if</strong> its dependency failed:</p>
+<div class="code-block"><div class="code-head"><div class="fname">AlwaysRun.java</div></div><pre class="code">@Test(dependsOnMethods = "login", alwaysRun = true)
+public void logoutCleanup() {
+    // runs regardless of whether login() passed or failed
+}</pre></div>
+<div class="callout pitfall">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <div class="body"><b>Common mistake</b><p>Overusing <code class="inline">dependsOnMethods</code> to chain unrelated tests just to control order (that's what <code class="inline">priority</code> is for). Real dependencies should mean genuine business-flow dependency, not "I want method A to run before method B."</p></div>
+</div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"If a method it depends on fails, is the dependent test marked as failed or skipped?" — <strong>Skipped</strong>, not failed. This distinction matters a lot in reports, because a wave of "skipped" tests correctly points back to one root-cause failure instead of looking like many unrelated bugs.</p></div>
+</div>
+</div>
+`},
+{id:'groups', group:'g4', num:11, title:'Groups', dek:'Tagging tests as smoke, regression, sanity, or anything else — and running only the tag you need.',
+html:`
+<div class="prose">
+<h2>Why groups matter in real pipelines</h2>
+<p>Not every test needs to run on every commit. A common real-world setup:</p>
+<ul>
+<li><strong>smoke</strong> — 10 critical tests, run on every single commit, finish in 2 minutes.</li>
+<li><strong>regression</strong> — the full suite, run nightly or before a release.</li>
+<li><strong>sanity</strong> — a slightly larger check after a deployment.</li>
+</ul>
+<p>Groups let one codebase serve all three needs without duplicating tests or classes.</p>
+<h2>Tagging a test with groups</h2>
+<div class="code-block">
+<div class="code-head"><div class="fname">GroupDemo.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">public class GroupDemo {
+
+    @Test(groups = { "smoke", "regression" })
+    public void login() {
+        System.out.println("Critical path — always runs");
+    }
+
+    @Test(groups = "regression")
+    public void applyPromoCode() {
+        System.out.println("Runs only in full regression");
+    }
+
+    @Test(groups = "regression")
+    public void updateShippingAddress() {
+        System.out.println("Runs only in full regression");
+    }
+}</pre>
+</div>
+<h2>Running only a specific group via testng.xml</h2>
+<div class="code-block">
+<div class="code-head"><div class="fname">testng.xml</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">&lt;suite name="SmokeOnly"&gt;
+    &lt;test name="Smoke"&gt;
+        &lt;groups&gt;
+            &lt;run&gt;
+                &lt;include name="smoke"/&gt;
+            &lt;/run&gt;
+        &lt;/groups&gt;
+        &lt;classes&gt;
+            &lt;class name="tests.GroupDemo"/&gt;
+        &lt;/classes&gt;
+    &lt;/test&gt;
+&lt;/suite&gt;</pre>
+</div>
+<p>With this XML, only <code class="inline">login()</code> runs — <code class="inline">applyPromoCode()</code> and <code class="inline">updateShippingAddress()</code> are skipped because they aren't tagged "smoke."</p>
+<h2>Group of groups (MetaGroups)</h2>
+<p>You can define a group that itself is made up of other groups:</p>
+<div class="code-block"><div class="code-head"><div class="fname">testng.xml (snippet)</div></div><pre class="code">&lt;groups&gt;
+    &lt;define name="all"&gt;
+        &lt;include name="smoke"/&gt;
+        &lt;include name="regression"/&gt;
+    &lt;/define&gt;
+    &lt;run&gt;
+        &lt;include name="all"/&gt;
+    &lt;/run&gt;
+&lt;/groups&gt;</pre></div>
+<h2>Class-level groups</h2>
+<p>Apply <code class="inline">groups</code> at the class level to tag every test method inside it at once, without repeating the attribute:</p>
+<div class="code-block"><div class="code-head"><div class="fname">ClassLevelGroup.java</div></div><pre class="code">@Test(groups = "regression")
+public class CheckoutTests {
+    // every @Test method in this class inherits the "regression" group
+}</pre></div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"How would you run only smoke tests before a deployment?" — Tag the critical methods with <code class="inline">groups = "smoke"</code>, then point CI at a <code class="inline">testng.xml</code> whose <code class="inline">&lt;groups&gt;&lt;run&gt;&lt;include name="smoke"/&gt;</code> filters to just that tag.</p></div>
+</div>
+</div>
+`},
+
+{id:'parameters', group:'g4', num:12, title:'Parameters', dek:'Feeding a value from testng.xml straight into a test method — the simplest form of externalized configuration.',
+html:`
+<div class="prose">
+<h2>What @Parameters is for</h2>
+<p><code class="inline">@Parameters</code> pulls named values defined in <code class="inline">testng.xml</code> into your Java test method — most commonly used for things like which browser to run against, an environment URL, or a username, without hardcoding it in the test.</p>
+<h2>Defining a parameter in testng.xml</h2>
+<div class="code-block">
+<div class="code-head"><div class="fname">testng.xml</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">&lt;suite name="ParamSuite"&gt;
+    &lt;test name="ChromeRun"&gt;
+        &lt;parameter name="browser" value="chrome"/&gt;
+        &lt;parameter name="baseUrl" value="https://staging.example.com"/&gt;
+        &lt;classes&gt;
+            &lt;class name="tests.ParamDemo"/&gt;
+        &lt;/classes&gt;
+    &lt;/test&gt;
+&lt;/suite&gt;</pre>
+</div>
+<h2>Consuming it in the test class</h2>
+<div class="code-block">
+<div class="code-head"><div class="fname">ParamDemo.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">public class ParamDemo {
+
+    @Parameters({"browser", "baseUrl"})
+    @BeforeMethod
+    public void setUp(String browser, String baseUrl) {
+        if (browser.equalsIgnoreCase("chrome")) {
+            driver = new ChromeDriver();
+        } else {
+            driver = new FirefoxDriver();
+        }
+        driver.get(baseUrl);
+    }
+}</pre>
+</div>
+<p>The values map by <strong>position</strong> — the order of names inside <code class="inline">@Parameters({...})</code> must match the order of method arguments.</p>
+<h2>Optional parameters</h2>
+<p>If a parameter might not always be supplied, provide a fallback with <code class="inline">@Optional</code> so the test doesn't crash when it's missing from the XML:</p>
+<div class="code-block"><div class="code-head"><div class="fname">OptionalParam.java</div></div><pre class="code">@Parameters("environment")
+@BeforeMethod
+public void setUp(@Optional("qa") String environment) {
+    System.out.println("Running against: " + environment);
+}</pre></div>
+<h2>@Parameters vs @DataProvider — the distinction interviewers check for</h2>
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th></th><th>@Parameters</th><th>@DataProvider</th></tr>
+<tr><td>Value source</td><td>testng.xml (static, external)</td><td>Java method (dynamic, can compute/read from files/DB)</td></tr>
+<tr><td>Values per test run</td><td>One fixed value per test run</td><td>Many rows — method runs once per row</td></tr>
+<tr><td>Typical use</td><td>Environment/browser config</td><td>Data-driven testing (e.g. 20 login combinations)</td></tr>
+<tr><td>Changing values</td><td>Requires editing XML</td><td>Requires editing/pointing to a data source</td></tr>
+</table>
+</div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"When would you use @Parameters instead of @DataProvider?" — When you need one fixed configuration value per run (like which browser/environment to target), not multiple rows of test data. If you need the same test to run repeatedly with different inputs, that's DataProvider's job.</p></div>
+</div>
+</div>
+`},
+{id:'dataprovider', group:'g4', num:13, title:'DataProvider', dek:'The workhorse of data-driven Selenium testing — run one test method against many rows of data automatically.',
+html:`
+<div class="prose">
+<h2>The core idea</h2>
+<p><code class="inline">@DataProvider</code> is a Java method that returns a 2D array (or an <code class="inline">Iterator</code>) of test data. TestNG calls your <code class="inline">@Test</code> method once <strong>per row</strong>, automatically. This is the standard way to do data-driven login testing, form validation, or any scenario where the same steps run against different inputs.</p>
+<div class="code-block">
+<div class="code-head"><div class="fname">LoginDataTest.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
+public class LoginDataTest {
+
+    @DataProvider(name = "loginData")
+    public Object[][] getLoginData() {
+        return new Object[][] {
+            { "validUser@example.com", "CorrectPass1", true },
+            { "validUser@example.com", "WrongPass",    false },
+            { "not-an-email",          "CorrectPass1", false },
+            { "",                      "",              false }
+        };
+    }
+
+    @Test(dataProvider = "loginData")
+    public void loginTest(String email, String password, boolean expectedSuccess) {
+        driver.findElement(By.id("email")).sendKeys(email);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.id("submit")).click();
+
+        boolean isLoggedIn = driver.findElements(By.id("dashboard")).size() > 0;
+        Assert.assertEquals(isLoggedIn, expectedSuccess);
+    }
+}</pre>
+</div>
+<p>TestNG will run <code class="inline">loginTest</code> <strong>four times</strong> — once per row — each showing up as a separate result in the report.</p>
+<h2>DataProvider in a separate class</h2>
+<p>For reusability across multiple test classes, DataProviders are commonly pulled into their own utility class:</p>
+<div class="code-block">
+<div class="code-head"><div class="fname">DataProviders.java</div></div><pre class="code">public class DataProviders {
+    @DataProvider(name = "loginData")
+    public static Object[][] loginData() {
+        return new Object[][] {
+            { "user1@test.com", "pass123" },
+            { "user2@test.com", "pass456" }
+        };
+    }
+}</pre></div>
+<div class="code-block">
+<div class="code-head"><div class="fname">LoginTest.java</div></div><pre class="code">@Test(dataProvider = "loginData", dataProviderClass = DataProviders.class)
+public void loginTest(String email, String password) { ... }</pre></div>
+<h2>Reading data from Excel/CSV (the real-world pattern)</h2>
+<p>In production frameworks, the array is rarely hardcoded — it's usually built by reading an Excel sheet, CSV, or JSON file, so QA can update test data without touching code:</p>
+<div class="code-block"><div class="code-head"><div class="fname">ExcelDataProvider.java</div></div><pre class="code">@DataProvider(name = "excelLoginData")
+public Object[][] getDataFromExcel() throws IOException {
+    // read rows from an .xlsx file using Apache POI,
+    // then convert them into an Object[][] before returning
+    return ExcelUtils.readSheet("testdata/login.xlsx", "Sheet1");
+}</pre></div>
+<h2>parallel = true on a DataProvider</h2>
+<p>Rows from a single DataProvider can be executed in parallel threads:</p>
+<div class="code-block"><div class="code-head"><div class="fname">ParallelData.java</div></div><pre class="code">@DataProvider(name = "loginData", parallel = true)
+public Object[][] getLoginData() { ... }</pre></div>
+<div class="callout pitfall">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <div class="body"><b>Thread-safety trap</b><p>If a DataProvider is <code class="inline">parallel = true</code>, each row may execute on a different thread simultaneously — so the WebDriver instance <strong>must not</strong> be a shared class-level field. Use <code class="inline">ThreadLocal&lt;WebDriver&gt;</code> so each thread gets its own browser instance (see the Parallel Execution topic for more).</p></div>
+</div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"How did you implement data-driven testing in your framework?" — A strong answer names the actual data source (Excel via Apache POI, a JSON file, a database), describes converting it into an <code class="inline">Object[][]</code>, and mentions that the <code class="inline">@Test</code> method runs once per row automatically via <code class="inline">dataProvider = "..."</code>.</p></div>
+</div>
+</div>
+`},
+{id:'parallel', group:'g5', num:14, title:'Parallel Execution', dek:'Cutting a 2-hour Selenium suite down to 20 minutes — and the ThreadLocal pattern that makes it safe.',
+html:`
+<div class="prose">
+<h2>Why parallel execution matters for Selenium specifically</h2>
+<p>Browser tests are slow — each one launches a real browser, waits on page loads and animations, and interacts with the DOM. A regression suite of 300 UI tests running sequentially can easily take hours. TestNG can run tests <strong>concurrently</strong>, which is one of the biggest reasons it's preferred for Selenium frameworks over sequential-only runners.</p>
+<h2>The four parallel modes (set in testng.xml)</h2>
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th>Mode</th><th>What runs in parallel</th></tr>
+<tr><td><code>methods</code></td><td>Every <code>@Test</code> method, even within the same class, runs on its own thread</td></tr>
+<tr><td><code>classes</code></td><td>Each test class runs on its own thread; methods within a class still run sequentially</td></tr>
+<tr><td><code>tests</code></td><td>Each &lt;test&gt; tag in testng.xml (e.g. "ChromeTests", "FirefoxTests") runs on its own thread</td></tr>
+<tr><td><code>instances</code></td><td>Each instance of a test class (relevant with factories) runs on its own thread</td></tr>
+</table>
+</div>
+<div class="code-block">
+<div class="code-head"><div class="fname">testng.xml</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">&lt;suite name="ParallelSuite" parallel="classes" thread-count="4"&gt;
+    &lt;test name="RegressionRun"&gt;
+        &lt;classes&gt;
+            &lt;class name="tests.LoginTest"/&gt;
+            &lt;class name="tests.CheckoutTest"/&gt;
+            &lt;class name="tests.SearchTest"/&gt;
+            &lt;class name="tests.ProfileTest"/&gt;
+        &lt;/classes&gt;
+    &lt;/test&gt;
+&lt;/suite&gt;</pre>
+</div>
+<h2>The problem: a shared WebDriver breaks under parallel runs</h2>
+<p>If your test classes share one <code class="inline">static WebDriver driver</code> field, parallel threads will fight over the <strong>same browser instance</strong> — one thread navigates away from a page while another thread is mid-assertion on it. Results become flaky and unreliable.</p>
+<h2>The fix: ThreadLocal&lt;WebDriver&gt;</h2>
+<div class="code-block">
+<div class="code-head"><div class="fname">DriverManager.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">public class DriverManager {
+
+    private static ThreadLocal&lt;WebDriver&gt; driver = new ThreadLocal&lt;&gt;();
+
+    public static void setDriver(WebDriver webDriver) {
+        driver.set(webDriver);
+    }
+
+    public static WebDriver getDriver() {
+        return driver.get();
+    }
+
+    public static void unload() {
+        driver.remove();
+    }
+}</pre>
+</div>
+<div class="code-block">
+<div class="code-head"><div class="fname">BaseTest.java</div></div><pre class="code">@BeforeMethod
+public void setUp() {
+    WebDriver localDriver = new ChromeDriver();
+    DriverManager.setDriver(localDriver);
+}
+
+@AfterMethod
+public void tearDown() {
+    DriverManager.getDriver().quit();
+    DriverManager.unload();
+}</pre></div>
+<p>Each thread gets its <strong>own isolated</strong> WebDriver instance via <code class="inline">ThreadLocal</code>, so parallel tests never interfere with each other's browser sessions.</p>
+<h2>data-provider-thread-count</h2>
+<p>When a DataProvider is marked <code class="inline">parallel = true</code>, you can additionally cap how many threads it uses:</p>
+<div class="code-block"><div class="code-head"><div class="fname">testng.xml (snippet)</div></div><pre class="code">&lt;suite name="Suite" data-provider-thread-count="5"&gt;</pre></div>
+<div class="callout pitfall">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <div class="body"><b>Common mistake</b><p>Setting <code class="inline">thread-count="10"</code> without checking machine/Grid capacity — too many concurrent Chrome instances exhausts memory and causes cryptic crashes that look like test bugs but are actually resource starvation. Tune thread count to the execution environment (local machine vs Selenium Grid vs cloud provider).</p></div>
+</div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"How did you make your Selenium framework thread-safe for parallel execution?" — The expected answer: <code class="inline">ThreadLocal&lt;WebDriver&gt;</code> so each thread owns its own browser instance, avoiding a shared/static driver field.</p></div>
+</div>
+</div>
+`},
+{id:'listeners', group:'g5', num:15, title:'Listeners', dek:'Hooking into every test event — pass, fail, skip, start — to automate things like screenshots and custom reports.',
+html:`
+<div class="prose">
+<h2>What a listener actually is</h2>
+<p>A <strong>listener</strong> is a Java class that implements a TestNG interface (most commonly <code class="inline">ITestListener</code>) and overrides methods that TestNG calls automatically at key moments — a test starting, passing, failing, or being skipped. This is how frameworks add cross-cutting behaviour (screenshots, logging, Slack alerts) without touching every individual test method.</p>
+<h2>ITestListener — the most common one</h2>
+<div class="code-block">
+<div class="code-head"><div class="fname">TestListener.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">public class TestListener implements ITestListener {
+
+    @Override
+    public void onTestStart(ITestResult result) {
+        System.out.println("STARTING: " + result.getName());
+    }
+
+    @Override
+    public void onTestSuccess(ITestResult result) {
+        System.out.println("PASSED: " + result.getName());
+    }
+
+    @Override
+    public void onTestFailure(ITestResult result) {
+        System.out.println("FAILED: " + result.getName());
+        WebDriver driver = DriverManager.getDriver();
+        ScreenshotUtils.capture(driver, result.getName());
+    }
+
+    @Override
+    public void onTestSkipped(ITestResult result) {
+        System.out.println("SKIPPED: " + result.getName());
+    }
+}</pre>
+</div>
+<h2>Registering a listener</h2>
+<p><strong>Option 1 — annotation on the test class:</strong></p>
+<div class="code-block"><div class="code-head"><div class="fname">LoginTest.java</div></div><pre class="code">@Listeners(TestListener.class)
+public class LoginTest {
+    // tests
+}</pre></div>
+<p><strong>Option 2 — testng.xml (applies suite-wide, the more common real-world approach):</strong></p>
+<div class="code-block"><div class="code-head"><div class="fname">testng.xml</div></div><pre class="code">&lt;suite name="Suite"&gt;
+    &lt;listeners&gt;
+        &lt;listener class-name="listeners.TestListener"/&gt;
+    &lt;/listeners&gt;
+    &lt;test name="Regression"&gt;
+        &lt;classes&gt;
+            &lt;class name="tests.LoginTest"/&gt;
+        &lt;/classes&gt;
+    &lt;/test&gt;
+&lt;/suite&gt;</pre></div>
+<h2>Other listener interfaces worth knowing</h2>
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th>Interface</th><th>Fires around…</th></tr>
+<tr><td><code>ITestListener</code></td><td>Individual @Test method events (start, pass, fail, skip)</td></tr>
+<tr><td><code>ISuiteListener</code></td><td>The whole suite starting/finishing</td></tr>
+<tr><td><code>IInvokedMethodListener</code></td><td>Every method invocation — including @Before/@After, not just @Test</td></tr>
+<tr><td><code>IAnnotationTransformer</code></td><td>Modifying annotation attributes at runtime (e.g. injecting a retry analyzer into every test)</td></tr>
+<tr><td><code>IReporter</code></td><td>Generating a fully custom report after the run finishes</td></tr>
+</table>
+</div>
+<h2>Real use case: auto-attaching a screenshot on every failure</h2>
+<p>This is the single most common reason listeners appear in real frameworks — instead of remembering to add screenshot code to every test, <code class="inline">onTestFailure()</code> handles it globally, once, for the entire suite.</p>
+<div class="callout tip">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <div class="body"><b>Why this matters for interviews</b><p>Listeners are a strong signal of framework maturity. Being able to explain "I used <code class="inline">ITestListener.onTestFailure()</code> to auto-capture a screenshot and attach it to the Extent Report" demonstrates you've built (or worked deeply in) a real framework, not just written individual test scripts.</p></div>
+</div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"How does your framework capture a screenshot automatically when a test fails?" — Implement <code class="inline">ITestListener</code>, override <code class="inline">onTestFailure(ITestResult result)</code>, grab the current thread's WebDriver, cast it to <code class="inline">TakesScreenshot</code>, and save the file — then register the listener in testng.xml so it applies to every test.</p></div>
+</div>
+</div>
+`},
+{id:'retry-analyzer', group:'g5', num:16, title:'Retry Analyzer', dek:'Automatically re-running a test that failed due to flakiness — without masking real bugs.',
+html:`
+<div class="prose">
+<h2>Why retries exist</h2>
+<p>UI automation has a class of failures that are <strong>environmental, not logical</strong> — a slow network causing an element to load a second late, a transient animation, a momentarily unresponsive Grid node. Retrying a genuinely flaky test once or twice can filter out this noise, as long as it's not used to hide real, reproducible bugs.</p>
+<h2>Implementing IRetryAnalyzer</h2>
+<div class="code-block">
+<div class="code-head"><div class="fname">RetryAnalyzer.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">public class RetryAnalyzer implements IRetryAnalyzer {
+
+    private int retryCount = 0;
+    private static final int MAX_RETRY = 2;
+
+    @Override
+    public boolean retry(ITestResult result) {
+        if (retryCount < MAX_RETRY) {
+            retryCount++;
+            return true;   // tells TestNG to run this test again
+        }
+        return false;      // give up, report as failed
+    }
+}</pre>
+</div>
+<div class="code-block">
+<div class="code-head"><div class="fname">LoginTest.java</div></div><pre class="code">@Test(retryAnalyzer = RetryAnalyzer.class)
+public void loginTest() {
+    // flaky-prone UI step
+}</pre></div>
+<h2>Applying it to every test automatically</h2>
+<p>Manually adding <code class="inline">retryAnalyzer = RetryAnalyzer.class</code> to every method is easy to forget. The standard fix is an <code class="inline">IAnnotationTransformer</code> listener that injects it globally:</p>
+<div class="code-block"><div class="code-head"><div class="fname">RetryTransformer.java</div></div><pre class="code">public class RetryTransformer implements IAnnotationTransformer {
+    @Override
+    public void transform(ITestAnnotation annotation, Class testClass,
+                           Constructor testConstructor, Method testMethod) {
+        annotation.setRetryAnalyzer(RetryAnalyzer.class);
+    }
+}</pre></div>
+<div class="callout pitfall">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <div class="body"><b>Interview red flag to avoid</b><p>Blindly retrying every failure 3-4 times can hide real regressions and slow the suite down significantly. A mature answer mentions tracking retry counts in the report so genuinely flaky tests get investigated and fixed, not silently retried forever.</p></div>
+</div>
+</div>
+`},
+
+{id:'invocation-count', group:'g5', num:17, title:'Invocation Count', dek:'Running the exact same test method N times in a row — useful for spotting flakiness and load-style checks.',
+html:`
+<div class="prose">
+<h2>What it does</h2>
+<p><code class="inline">invocationCount</code> tells TestNG to run a single <code class="inline">@Test</code> method a fixed number of times — not with different data (that's DataProvider), just the same test, repeated. Common uses: proving a flaky test is actually stable, or a lightweight repeated load check.</p>
+<div class="code-block">
+<div class="code-head"><div class="fname">InvocationDemo.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">@Test(invocationCount = 5)
+public void searchReturnsResults() {
+    driver.findElement(By.id("search")).sendKeys("laptop");
+    driver.findElement(By.id("searchBtn")).click();
+    Assert.assertTrue(driver.findElements(By.className("result")).size() > 0);
+}</pre>
+</div>
+<p>This runs <code class="inline">searchReturnsResults()</code> five separate times, each counted individually in the report — so 3 passes and 2 failures out of 5 runs is visible at a glance.</p>
+<h2>Combining with successPercentage</h2>
+<p>Sometimes a test only needs to pass <em>most</em> of the time to be considered acceptable (useful for genuinely flaky third-party integrations):</p>
+<div class="code-block"><div class="code-head"><div class="fname">SuccessPercentage.java</div></div><pre class="code">@Test(invocationCount = 10, successPercentage = 80)
+public void thirdPartyWidgetLoads() {
+    // considered an overall PASS if at least 8/10 invocations succeed
+}</pre></div>
+<h2>invocationTimeOut</h2>
+<p>Caps the <strong>total</strong> time allowed across all invocations combined:</p>
+<div class="code-block"><div class="code-head"><div class="fname">InvocationTimeout.java</div></div><pre class="code">@Test(invocationCount = 5, invocationTimeOut = 10000)
+public void quickCheck() {
+    // all 5 invocations together must finish within 10 seconds
+}</pre></div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"What's the difference between <code class="inline">invocationCount</code> and a DataProvider loop?" — <code class="inline">invocationCount</code> repeats the exact same test with the same inputs N times; DataProvider runs the same test logic with <em>different</em> inputs per row. They solve different problems: repetition vs data variation.</p></div>
+</div>
+</div>
+`},
+
+{id:'timeout', group:'g5', num:18, title:'TimeOut', dek:'Failing a hung test automatically instead of letting it stall the whole suite indefinitely.',
+html:`
+<div class="prose">
+<h2>Why timeouts matter in Selenium suites</h2>
+<p>A browser test can hang — a page that never finishes loading, an element wait that never resolves. Without a timeout, one broken test can silently block an entire CI pipeline. <code class="inline">timeOut</code> on <code class="inline">@Test</code> forces TestNG to fail the test (rather than hang forever) once the limit is hit.</p>
+<div class="code-block">
+<div class="code-head"><div class="fname">TimeoutDemo.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">@Test(timeOut = 5000)   // milliseconds
+public void checkoutShouldCompleteQuickly() {
+    driver.findElement(By.id("checkoutBtn")).click();
+    wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("confirmation")));
+}</pre>
+</div>
+<p>If this test takes longer than 5000ms (5 seconds) to complete, TestNG interrupts it and marks it as <strong>FAILED</strong> with a <code class="inline">org.testng.internal.thread.ThreadTimeoutException</code> — instead of letting the suite hang.</p>
+<h2>Suite-wide default timeout</h2>
+<p>Rather than setting it per method, a sane default can be applied to the whole suite in testng.xml:</p>
+<div class="code-block"><div class="code-head"><div class="fname">testng.xml (snippet)</div></div><pre class="code">&lt;suite name="Suite" time-out="60000"&gt;</pre></div>
+<div class="callout pitfall">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  <div class="body"><b>Don't confuse this with WebDriver waits</b><p><code class="inline">timeOut</code> is a TestNG-level safety net for the whole method — it is not a substitute for proper <code class="inline">WebDriverWait</code>/explicit waits inside your Selenium code. Rely on explicit waits for normal synchronization; use <code class="inline">timeOut</code> as the outer guard against a fully hung test.</p></div>
+</div>
+</div>
+`},
+
+{id:'threadpoolsize', group:'g5', num:19, title:'ThreadPoolSize', dek:'Parallelizing invocations of a single test method — a more granular cousin of suite-level parallel execution.',
+html:`
+<div class="prose">
+<h2>What it does</h2>
+<p><code class="inline">threadPoolSize</code> runs multiple <strong>invocations of one method</strong> concurrently, using a pool of threads. It only makes sense combined with <code class="inline">invocationCount</code> — it tells TestNG how many of those repeated invocations to run <em>at the same time</em> rather than one after another.</p>
+<div class="code-block">
+<div class="code-head"><div class="fname">ThreadPoolDemo.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">@Test(invocationCount = 10, threadPoolSize = 5)
+public void searchIsStableUnderLoad() {
+    // 10 total invocations, but only 5 run concurrently at any moment
+}</pre>
+</div>
+<h2>threadPoolSize vs parallel="methods" — the distinction interviewers check</h2>
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th></th><th><code>threadPoolSize</code></th><th><code>parallel="methods"</code> (testng.xml)</th></tr>
+<tr><td>Scope</td><td>Multiple invocations of ONE method</td><td>Different, distinct @Test methods across the suite</td></tr>
+<tr><td>Requires</td><td><code>invocationCount</code> on the same method</td><td>The <code>parallel</code> attribute on &lt;suite&gt; and a <code>thread-count</code></td></tr>
+<tr><td>Typical use</td><td>Lightweight concurrency/stress checks on a single action</td><td>Speeding up the whole regression suite</td></tr>
+</table>
+</div>
+<div class="callout tip">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <div class="body"><b>Thread-safety still applies</b><p>Exactly like suite-level parallel execution, concurrent invocations under <code class="inline">threadPoolSize</code> must not share a single WebDriver instance — the same <code class="inline">ThreadLocal&lt;WebDriver&gt;</code> pattern from the Parallel Execution topic applies here too.</p></div>
+</div>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"Can you use threadPoolSize without invocationCount?" — No. <code class="inline">threadPoolSize</code> only controls concurrency <em>among repeated invocations</em> of the same method — without <code class="inline">invocationCount</code>, there's nothing to parallelize, and TestNG will throw a configuration error.</p></div>
+</div>
+</div>
+`},
+{id:'best-practices', group:'g6', num:20, title:'Best Practices', dek:'The habits that separate a maintainable Selenium + TestNG framework from a folder of brittle scripts.',
+html:`
+<div class="prose">
+<h2>Test design</h2>
+<ul>
+<li><strong>Keep tests independent.</strong> Each test should be runnable on its own, in any order, without depending on leftover state from another test.</li>
+<li><strong>One logical assertion focus per test.</strong> A test named <code class="inline">verifyLogin()</code> shouldn't also silently verify the shopping cart — split them.</li>
+<li><strong>Use the Page Object Model</strong> to separate element locators/page interactions from test logic — this is close to non-negotiable in real frameworks (see the Framework Architecture topic).</li>
+<li><strong>Prefer explicit waits</strong> (<code class="inline">WebDriverWait</code>) over <code class="inline">Thread.sleep()</code> — hardcoded sleeps make suites slow and still flaky.</li>
+</ul>
+<h2>TestNG configuration</h2>
+<ul>
+<li><strong>Use groups deliberately</strong> (smoke/regression/sanity) so CI can run the right subset for the right situation.</li>
+<li><strong>Drive configuration through testng.xml</strong>, not hardcoded values, so environment/browser changes don't require recompiling.</li>
+<li><strong>Use ThreadLocal&lt;WebDriver&gt;</strong> from day one if there's any chance the suite will run in parallel later — retrofitting it after the fact is painful.</li>
+<li><strong>Register listeners centrally</strong> (screenshots, logging) instead of duplicating that logic inside every test.</li>
+</ul>
+<h2>Assertions &amp; reliability</h2>
+<ul>
+<li><strong>Use soft assertions</strong> when validating multiple independent fields on one page, so one run surfaces every problem.</li>
+<li><strong>Add meaningful assertion messages</strong> — <code class="inline">Assert.assertEquals(actual, expected, "message")</code> — so a failing report is self-explanatory without opening the code.</li>
+<li><strong>Use Retry Analyzer sparingly</strong> and track retry counts — a test that "passes on retry" every single run is masking a real bug, not being flaky.</li>
+</ul>
+<h2>Reporting &amp; maintainability</h2>
+<ul>
+<li><strong>Auto-capture screenshots on failure</strong> via a listener, so failures are debuggable without re-running.</li>
+<li><strong>Integrate with a richer report library</strong> (like ExtentReports or Allure) layered on top of TestNG's default HTML report for stakeholders who aren't developers.</li>
+<li><strong>Version-control test data</strong> (Excel/CSV/JSON) alongside the code so data changes are reviewable, like code changes.</li>
+</ul>
+<div class="callout tip">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  <div class="body"><b>The one-sentence version</b><p>If asked "what makes a good automation framework?" in an interview: independent tests, explicit waits, Page Object Model, externalized config and data, thread-safe parallel execution, and automatic failure diagnostics (screenshots + clear reports).</p></div>
+</div>
+</div>
+`},
+
+{id:'common-mistakes', group:'g6', num:21, title:'Common Mistakes', dek:'The recurring bugs and anti-patterns that show up in almost every real TestNG + Selenium codebase — know these and you will spot them fast.',
+html:`
+<div class="prose">
+<h2>Lifecycle &amp; structure mistakes</h2>
+<div class="callout pitfall"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+<div class="body"><b>Using @BeforeClass to open the browser "for speed," then writing tests that secretly depend on execution order.</b><p>Symptoms: tests pass individually but fail when the whole suite runs, or fail only in a certain order. Fix: use @BeforeMethod for anything that must be isolated per test.</p></div></div>
+<div class="callout pitfall"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+<div class="body"><b>Overusing dependsOnMethods to force ordering.</b><p>If tests are chained purely to control order rather than genuine business dependency, use <code class="inline">priority</code> instead — dependsOnMethods should represent real "step 2 needs step 1" logic, not convenience ordering.</p></div></div>
+
+<h2>Assertion mistakes</h2>
+<div class="callout pitfall"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+<div class="body"><b>Forgetting softAssert.assertAll().</b><p>Without it, every soft-assertion failure is silently swallowed and the test reports PASSED. This is the single most common soft-assert bug in real codebases.</p></div></div>
+<div class="callout pitfall"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+<div class="body"><b>Wrong argument order in assertEquals.</b><p><code class="inline">Assert.assertEquals(actual, expected)</code> — actual comes first. Swapping them still catches the failure, but the report's "expected vs actual" message reads backwards and misleads whoever debugs it later.</p></div></div>
+
+<h2>Parallel execution mistakes</h2>
+<div class="callout pitfall"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+<div class="body"><b>A shared/static WebDriver field with parallel="methods" or "classes" enabled.</b><p>Multiple threads drive the same browser simultaneously, producing bizarre, hard-to-reproduce failures. Always use <code class="inline">ThreadLocal&lt;WebDriver&gt;</code> once parallel execution is on.</p></div></div>
+
+<h2>Wait &amp; timing mistakes</h2>
+<div class="callout pitfall"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+<div class="body"><b>Reaching for Thread.sleep(5000) instead of an explicit wait.</b><p>Makes the suite unnecessarily slow (always waits the full 5s) and still flaky (5s isn't always enough). Use <code class="inline">WebDriverWait</code> with <code class="inline">ExpectedConditions</code> instead.</p></div></div>
+
+<h2>Retry &amp; reliability mistakes</h2>
+<div class="callout pitfall"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+<div class="body"><b>Setting a high retry count to make a red build go green.</b><p>Retries should surface genuinely intermittent infrastructure issues, not paper over a real, reproducible bug. If a test needs 3 retries to pass every single run, that's a bug to fix, not a flake to tolerate.</p></div></div>
+
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"Tell me about a bug you found in your own automation framework." — This list is exactly the kind of concrete, specific answer that question is fishing for. Pick one (e.g. the shared-WebDriver-under-parallel-execution bug) and describe symptom → root cause → fix.</p></div>
+</div>
+</div>
+`},
+{id:'architecture', group:'g6', num:24, title:'Real Company Framework Architecture', dek:'How the 23 pieces you just learned actually get assembled into a production-grade Selenium + TestNG framework.',
+html:`
+<div class="prose">
+<h2>The layered architecture</h2>
+<p>Almost every serious Selenium + TestNG framework in industry follows the same layered shape, regardless of company. Here's a realistic project structure using the <strong>Page Object Model</strong>:</p>
+<div class="ftree">
+<div><span class="d">src/test/java/</span></div>
+<div>├── <span class="d">base/</span></div>
+<div>│&nbsp;&nbsp;&nbsp;└── <span class="f">BaseTest.java</span> <span class="cm">// driver init, teardown, shared setup</span></div>
+<div>├── <span class="d">pages/</span></div>
+<div>│&nbsp;&nbsp;&nbsp;├── <span class="f">LoginPage.java</span></div>
+<div>│&nbsp;&nbsp;&nbsp;├── <span class="f">DashboardPage.java</span></div>
+<div>│&nbsp;&nbsp;&nbsp;└── <span class="f">CheckoutPage.java</span></div>
+<div>├── <span class="d">tests/</span></div>
+<div>│&nbsp;&nbsp;&nbsp;├── <span class="f">LoginTest.java</span></div>
+<div>│&nbsp;&nbsp;&nbsp;├── <span class="f">CheckoutTest.java</span></div>
+<div>│&nbsp;&nbsp;&nbsp;└── <span class="f">SearchTest.java</span></div>
+<div>├── <span class="d">listeners/</span></div>
+<div>│&nbsp;&nbsp;&nbsp;└── <span class="f">TestListener.java</span> <span class="cm">// screenshots, custom reporting</span></div>
+<div>├── <span class="d">utils/</span></div>
+<div>│&nbsp;&nbsp;&nbsp;├── <span class="f">DriverManager.java</span> <span class="cm">// ThreadLocal&lt;WebDriver&gt;</span></div>
+<div>│&nbsp;&nbsp;&nbsp;├── <span class="f">ExcelUtils.java</span> <span class="cm">// data-provider source</span></div>
+<div>│&nbsp;&nbsp;&nbsp;├── <span class="f">ConfigReader.java</span> <span class="cm">// reads config.properties</span></div>
+<div>│&nbsp;&nbsp;&nbsp;└── <span class="f">RetryAnalyzer.java</span></div>
+<div>└── <span class="d">dataproviders/</span></div>
+<div>&nbsp;&nbsp;&nbsp;&nbsp;└── <span class="f">DataProviders.java</span></div>
+<div><span class="d">src/test/resources/</span></div>
+<div>├── <span class="f">testng.xml</span></div>
+<div>├── <span class="f">config.properties</span></div>
+<div>└── <span class="f">testdata/login.xlsx</span></div>
+<div><span class="f">pom.xml</span></div>
+</div>
+<h2>What each layer is responsible for</h2>
+<div class="tbl-wrap">
+<table class="cmp">
+<tr><th>Layer</th><th>Responsibility</th></tr>
+<tr><td><code>base/BaseTest</code></td><td>Shared @BeforeMethod/@AfterMethod driver setup every test class extends</td></tr>
+<tr><td><code>pages/</code></td><td>Page Object Model — locators + page actions, zero assertions</td></tr>
+<tr><td><code>tests/</code></td><td>@Test methods calling page objects, holding the actual assertions</td></tr>
+<tr><td><code>listeners/</code></td><td>Cross-cutting concerns — screenshots on failure, custom reporting</td></tr>
+<tr><td><code>utils/</code></td><td>ThreadLocal driver management, Excel/config readers, retry logic</td></tr>
+<tr><td><code>dataproviders/</code></td><td>Centralised, reusable @DataProvider methods</td></tr>
+<tr><td><code>testng.xml</code></td><td>Suite composition — groups, parallelism, parameters, listeners</td></tr>
+</table>
+</div>
+<h2>A realistic BaseTest + Page Object + Test, wired together</h2>
+<div class="code-block">
+<div class="code-head"><div class="fname">BaseTest.java</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">public class BaseTest {
+
+    @BeforeMethod
+    @Parameters("browser")
+    public void setUp(@Optional("chrome") String browser) {
+        WebDriver driver = browser.equalsIgnoreCase("firefox")
+                ? new FirefoxDriver() : new ChromeDriver();
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5));
+        DriverManager.setDriver(driver);
+        DriverManager.getDriver().get(ConfigReader.get("baseUrl"));
+    }
+
+    @AfterMethod
+    public void tearDown() {
+        DriverManager.getDriver().quit();
+        DriverManager.unload();
+    }
+}</pre>
+</div>
+<div class="code-block">
+<div class="code-head"><div class="fname">LoginPage.java</div></div>
+<pre class="code">public class LoginPage {
+    WebDriver driver = DriverManager.getDriver();
+    By emailField = By.id("email");
+    By passwordField = By.id("password");
+    By submitBtn = By.id("submit");
+
+    public void login(String email, String password) {
+        driver.findElement(emailField).sendKeys(email);
+        driver.findElement(passwordField).sendKeys(password);
+        driver.findElement(submitBtn).click();
+    }
+}</pre></div>
+<div class="code-block">
+<div class="code-head"><div class="fname">LoginTest.java</div></div>
+<pre class="code">@Listeners(TestListener.class)
+public class LoginTest extends BaseTest {
+
+    @Test(dataProvider = "loginData", dataProviderClass = DataProviders.class,
+          groups = { "smoke", "regression" })
+    public void loginTest(String email, String password, boolean expected) {
+        new LoginPage().login(email, password);
+        boolean loggedIn = DriverManager.getDriver()
+                .findElements(By.id("dashboard")).size() > 0;
+        Assert.assertEquals(loggedIn, expected);
+    }
+}</pre></div>
+<h2>The master testng.xml tying it all together</h2>
+<div class="code-block">
+<div class="code-head"><div class="fname">testng.xml</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+<pre class="code">&lt;suite name="MasterSuite" parallel="classes" thread-count="4"&gt;
+    &lt;listeners&gt;
+        &lt;listener class-name="listeners.TestListener"/&gt;
+    &lt;/listeners&gt;
+
+    &lt;test name="ChromeRegression"&gt;
+        &lt;parameter name="browser" value="chrome"/&gt;
+        &lt;groups&gt;
+            &lt;run&gt;
+                &lt;include name="regression"/&gt;
+            &lt;/run&gt;
+        &lt;/groups&gt;
+        &lt;classes&gt;
+            &lt;class name="tests.LoginTest"/&gt;
+            &lt;class name="tests.CheckoutTest"/&gt;
+            &lt;class name="tests.SearchTest"/&gt;
+        &lt;/classes&gt;
+    &lt;/test&gt;
+&lt;/suite&gt;</pre></div>
+<h2>Where this connects to CI/CD</h2>
+<p>Jenkins or GitHub Actions typically runs <code class="inline">mvn clean test -DsuiteXmlFile=testng.xml</code> on every push, then archives <code class="inline">test-output/index.html</code> (or an Extent/Allure report layered on top) as a build artifact — so every commit produces a traceable, shareable pass/fail record automatically.</p>
+<div class="callout interview">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  <div class="body"><b>Likely interview question</b><p>"Walk me through your framework architecture." — Narrate exactly this: BaseTest for shared setup, Page Objects for element interaction, test classes for assertions, listeners for cross-cutting concerns, utils for driver/config/data management, and testng.xml as the single control point for what runs, how, and in what parallelism.</p></div>
+</div>
+</div>
+`},
+{id:'interview-qa', group:'g6', num:22, title:'Interview Questions', dek:'25 real interview questions with concise, correct answers. Tap any question to reveal the answer.', type:'interview'},
+
+{id:'quiz', group:'g6', num:23, title:'Quiz', dek:'15 questions to test what actually stuck. Instant feedback, styled like a TestNG assertion result.', type:'quiz'},
+// TOPIC_INSERT_MARKER
+];  // END_TOPICS
+
+const QA_DATA = [
+{q:"What is TestNG and how is it different from a unit testing library like JUnit?", a:"TestNG (Test Next Generation) is a Java testing framework inspired by JUnit and NUnit, built to add features large test suites need natively: flexible grouping, dependencies between tests, data-driven testing via DataProvider, native parallel execution, soft assertions, and a retry mechanism — most of which JUnit either lacks or requires extra configuration for."},
+{q:"What is the correct execution order of TestNG annotations?", a:"@BeforeSuite → @BeforeTest → @BeforeClass → @BeforeMethod → @Test → @AfterMethod → @AfterClass → @AfterTest → @AfterSuite. Before-annotations fire outside-in (widest scope first); After-annotations fire inside-out (narrowest scope first)."},
+{q:"What's the difference between @BeforeMethod and @BeforeClass?", a:"@BeforeMethod runs before every single @Test method in the class. @BeforeClass runs only once, before the very first @Test method in that class — regardless of how many test methods it contains."},
+{q:"What's the difference between @BeforeTest and @BeforeClass?", a:"@BeforeClass is scoped to a single Java class. @BeforeTest is scoped to a <test> tag in testng.xml, which can span multiple classes — so it runs once per <test> tag, not once per class."},
+{q:"What does the priority attribute do, and what's the default value?", a:"It controls the order @Test methods execute in — lower numbers run first. The default priority is 0. Methods sharing the same priority fall back to alphabetical order by method name."},
+{q:"Does priority stop a test from running if an earlier-priority test fails?", a:"No. Priority only controls order, not conditional execution. A later test still runs even if an earlier-priority test failed. To make one test conditional on another passing, use dependsOnMethods instead."},
+{q:"What's the difference between a hard assertion and a soft assertion?", a:"A hard assertion (org.testng.Assert) throws immediately on failure and stops the test method right there. A soft assertion (org.testng.asserts.SoftAssert) records the failure but lets the test keep running, reporting all collected failures together — but only if you call softAssert.assertAll() at the end."},
+{q:"What happens if you forget to call assertAll() after using SoftAssert?", a:"The test is reported as PASSED even if soft assertions inside it failed, because assertAll() is what actually raises the collected failures to TestNG. This is the most common soft-assertion bug in real codebases."},
+{q:"What is testng.xml used for?", a:"It's the suite configuration file — it defines which classes/methods to run, in what groups, with what parameters, what parallelism, and which listeners are active, all without touching Java code. It's typically what CI pipelines point at to run a suite."},
+{q:"What happens to a test that depends on a method that failed?", a:"It's marked SKIPPED, not failed — and if other tests depend on that skipped test in turn, they cascade to SKIPPED as well. This correctly points back to one root-cause failure instead of producing several misleading failures."},
+{q:"How do you make a dependent test run even if its dependency failed?", a:"Add alwaysRun = true to the @Test annotation, e.g. @Test(dependsOnMethods = \"login\", alwaysRun = true) — common for cleanup/logout steps that must run regardless of outcome."},
+{q:"What are TestNG groups used for?", a:"Tagging tests (e.g. smoke, regression, sanity) so a run can include or exclude specific tags via testng.xml, letting one codebase serve different testing needs (fast pre-commit checks vs full nightly regression) without duplicating tests."},
+{q:"What's the difference between @Parameters and @DataProvider?", a:"@Parameters pulls a single, fixed value per run from testng.xml — good for config like browser or environment. @DataProvider supplies multiple rows of data from a Java method, and the test runs once per row — good for data-driven scenarios like many login combinations."},
+{q:"How would you implement data-driven testing for a login form with 20 credential combinations?", a:"Write a @DataProvider method returning an Object[][] (often built by reading an Excel/CSV/JSON file), then annotate the test method with @Test(dataProvider = \"...\") — TestNG automatically runs the method once per row, reporting each as a separate result."},
+{q:"What are the parallel modes available in testng.xml, and what does each parallelize?", a:"methods (every @Test method runs on its own thread), classes (each class runs on its own thread), tests (each <test> tag runs on its own thread), and instances (each instance of a class, relevant with factories)."},
+{q:"Why is a shared static WebDriver dangerous with parallel execution?", a:"Multiple threads would drive the same browser instance simultaneously — one thread navigating while another asserts — producing flaky, hard-to-reproduce failures. The fix is ThreadLocal<WebDriver> so each thread gets its own isolated browser instance."},
+{q:"What is a TestNG listener, and name one interface you'd implement?", a:"A listener is a class that hooks into TestNG's lifecycle events. ITestListener is the most common — overriding onTestFailure(), for example, lets you auto-capture a screenshot every time any test fails, without adding that code to every test method."},
+{q:"How do you register a listener so it applies to the whole suite?", a:"Either annotate the test class with @Listeners(TestListener.class), or — more common in real frameworks — declare it once in testng.xml under <listeners><listener class-name=\"...\"/></listeners> so it applies suite-wide."},
+{q:"What is a Retry Analyzer and when should you use it?", a:"A class implementing IRetryAnalyzer that tells TestNG to re-run a failed test up to N times, used to absorb genuinely environmental flakiness (slow network, transient load). It should not be used to mask a real, reproducible bug — retry counts should be tracked and investigated."},
+{q:"What's the difference between invocationCount and a DataProvider?", a:"invocationCount repeats the exact same test with the same inputs N times in a row — useful for checking stability. A DataProvider runs the same test logic with different inputs per row — useful for data variation. They solve different problems."},
+{q:"What does the timeOut attribute on @Test do?", a:"It fails the test automatically if it runs longer than the specified milliseconds, preventing one hung test (e.g. an element that never loads) from stalling the entire suite indefinitely."},
+{q:"What's the difference between threadPoolSize and parallel=\"methods\"?", a:"threadPoolSize parallelizes multiple invocations of ONE method (and requires invocationCount to be set). parallel=\"methods\" in testng.xml parallelizes different, distinct @Test methods across the whole suite. Different scopes, different purposes."},
+{q:"How do you run only a subset of tests without modifying code?", a:"Use testng.xml — either the <groups><run><include name=\"...\"/></run></groups> block to filter by group, or list only the specific <class>/<methods> you want in the <classes> section."},
+{q:"What's the Page Object Model and why is it used with TestNG + Selenium?", a:"A design pattern where each web page gets its own class holding its locators and interaction methods, separate from test logic. Tests call page object methods instead of raw Selenium calls, so a UI change only requires updating one page class instead of every test that touches that page."},
+{q:"How would you explain your overall framework architecture in an interview?", a:"A layered structure: a BaseTest with shared @BeforeMethod/@AfterMethod setup, Page Objects encapsulating element interactions, test classes holding the actual assertions, listeners handling cross-cutting concerns like screenshots, utility classes managing the ThreadLocal driver/config/data, and testng.xml as the single control point for what runs, in what groups, and with what parallelism."},
+]; // END_QA
+
+const QUIZ_DATA = [
+{q:"Which annotation runs exactly once, before every test in the entire testng.xml suite?", opts:["@BeforeTest","@BeforeSuite","@BeforeClass","@BeforeMethod"], correct:1, explain:"@BeforeSuite is the widest scope — it runs once for the whole suite, before @BeforeTest, @BeforeClass, or @BeforeMethod."},
+{q:"What is the default priority value if none is specified on @Test?", opts:["1","-1","0","100"], correct:2, explain:"The default priority is 0. Lower numbers run first; ties are broken alphabetically by method name."},
+{q:"Which class provides soft assertions in TestNG?", opts:["org.testng.Assert","org.testng.asserts.SoftAssert","org.testng.SoftCheck","org.testng.annotations.Soft"], correct:1, explain:"org.testng.asserts.SoftAssert collects failures without stopping the test; you must call assertAll() to actually report them."},
+{q:"A test depends on another test via dependsOnMethods. The dependency FAILS. What happens to the dependent test?", opts:["It also fails","It is skipped","It runs normally","It throws a compile error"], correct:1, explain:"TestNG marks it SKIPPED, not failed — cleanly indicating the root cause was upstream rather than producing a misleading separate failure."},
+{q:"What must you call at the end of a method using SoftAssert for failures to actually be reported?", opts:["softAssert.verify()","softAssert.finish()","softAssert.assertAll()","softAssert.report()"], correct:2, explain:"Without assertAll(), collected soft-assertion failures are never raised, and the test is incorrectly reported as PASSED."},
+{q:"Which testng.xml tag lets you run only tests tagged \"smoke\"?", opts:["<filter>","<groups><run><include name=\"smoke\"/></run></groups>","<tags include=\"smoke\"/>","<smoke-only>true</smoke-only>"], correct:1, explain:"The <groups><run><include name=\"smoke\"/></run></groups> block filters execution to only methods tagged with that group."},
+{q:"Which is the correct way to feed the SAME test method 10 different rows of input data automatically?", opts:["invocationCount = 10","@DataProvider","threadPoolSize = 10","@Parameters with 10 values"], correct:1, explain:"@DataProvider supplies rows of data; the test method runs once per row automatically. invocationCount repeats with the SAME data, not different data."},
+{q:"In a parallel Selenium suite, what's the recommended way to avoid multiple threads sharing one browser instance?", opts:["Use a static WebDriver field","Use ThreadLocal<WebDriver>","Use Thread.sleep() between tests","Disable parallel execution entirely"], correct:1, explain:"ThreadLocal<WebDriver> gives each thread its own isolated WebDriver instance, which is essential once parallel execution is enabled."},
+{q:"Which listener interface would you implement to auto-capture a screenshot when any test fails?", opts:["IReporter","ISuiteListener","ITestListener","IAnnotationTransformer"], correct:2, explain:"ITestListener has an onTestFailure(ITestResult result) method — the standard hook for capturing screenshots or logging on failure."},
+{q:"What does the retryAnalyzer attribute on @Test do?", opts:["Runs the test faster","Automatically re-runs a failed test up to a defined limit","Skips flaky tests entirely","Increases the test's priority"], correct:1, explain:"A class implementing IRetryAnalyzer tells TestNG whether to re-attempt a failed test, useful for absorbing genuine environmental flakiness."},
+{q:"threadPoolSize on a @Test method only has an effect when combined with which other attribute?", opts:["priority","groups","invocationCount","dependsOnMethods"], correct:2, explain:"threadPoolSize controls how many concurrent invocations run — it needs invocationCount to have multiple invocations to parallelize in the first place."},
+{q:"Which attribute fails a test automatically if it runs longer than a specified duration?", opts:["timeOut","maxDuration","invocationTimeOut","deadline"], correct:0, explain:"timeOut (in milliseconds) fails the test if it exceeds that duration, preventing a hung test from stalling the whole suite. invocationTimeOut is the related attribute for the TOTAL time across repeated invocationCount runs."},
+{q:"@BeforeTest is scoped to which element in testng.xml?", opts:["The <suite> tag","The <test> tag (can span multiple classes)","A single @Test method","A single Java class only"], correct:1, explain:"@BeforeTest runs once per <test> tag in testng.xml, which can group several classes together — unlike @BeforeClass, which is scoped to one class."},
+{q:"In Assert.assertEquals(actual, expected), what is the correct argument order?", opts:["expected, then actual","actual, then expected","order doesn't matter","message, then actual, then expected"], correct:1, explain:"TestNG's convention is assertEquals(actual, expected) — actual value first. Reversing it doesn't break the check, but it makes the failure report's message misleading."},
+{q:"What's the main architectural benefit of the Page Object Model in a TestNG + Selenium framework?", opts:["It makes tests run in parallel automatically", "It separates element locators/page logic from test/assertion logic, so a UI change touches one place", "It removes the need for testng.xml", "It replaces the need for assertions"], correct:1, explain:"POM isolates \"how to interact with a page\" from \"what to verify,\" so a locator change only requires updating one page class instead of every test touching that page."},
+]; // END_QUIZ
+
+/* =========================================================
+   RENDER ENGINE
+   ========================================================= */
+const mainInner = document.getElementById('mainInner');
+let currentId = null;
+const visited = new Set();
+let quizIndex = 0;
+let quizAnswers = new Array(QUIZ_DATA.length).fill(null);
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+function chevronSvg(cls){
+  return `<svg class="${cls}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
+}
+
+function buildSidebar(filter){
+  filter = filter || '';
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'search';
+  searchWrap.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="searchInput" placeholder="Search topics…">`;
+  sidebar.appendChild(searchWrap);
+  const input = searchWrap.querySelector('#searchInput');
+  input.value = filter;
+  input.addEventListener('input', (e)=>{
+    const val = e.target.value;
+    const caret = e.target.selectionStart;
+    buildSidebar(val);
+    const newInput = document.getElementById('searchInput');
+    newInput.focus();
+    try{ newInput.setSelectionRange(caret, caret); }catch(err){}
+  });
+
+  const lowerFilter = filter.toLowerCase();
+  GROUPS.forEach(g=>{
+    const items = topics.filter(t=> t.group===g.id && (lowerFilter==='' || t.title.toLowerCase().includes(lowerFilter)));
+    if(items.length===0) return;
+    const groupEl = document.createElement('div');
+    groupEl.className = 'group';
+    const doneCount = items.filter(i=>visited.has(i.id)).length;
+    const head = document.createElement('div');
+    head.className = 'group-head';
+    head.innerHTML = `${chevronSvg('caret')}<span class="gname">${esc(g.name)}</span><span class="gcount">${doneCount}/${items.length}</span>`;
+    head.addEventListener('click', ()=> groupEl.classList.toggle('collapsed'));
+    groupEl.appendChild(head);
+
+    const itemsWrap = document.createElement('div');
+    itemsWrap.className = 'group-items';
+    items.forEach(t=>{
+      const it = document.createElement('div');
+      it.className = 'item' + (t.id===currentId ? ' active' : '') + (visited.has(t.id) ? ' done' : '');
+      it.innerHTML = `<span class="status"></span><span class="tnum">${pad2(t.num)}</span><span>${esc(t.title)}</span>`;
+      it.addEventListener('click', ()=> selectTopic(t.id));
+      itemsWrap.appendChild(it);
+    });
+    groupEl.appendChild(itemsWrap);
+    sidebar.appendChild(groupEl);
+  });
+}
+
+function updateSummary(){
+  document.getElementById('sumTotal').textContent = topics.length;
+  document.getElementById('sumPass').textContent = visited.size;
+  const pct = Math.round((visited.size/topics.length)*100);
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function topicHeader(topic){
+  const group = GROUPS.find(g=>g.id===topic.group);
+  return `
+    <div class="eyebrow">${esc(group.name)}<span class="sep">›</span>TEST ${pad2(topic.num)} / 24</div>
+    <h1 class="topic-title">${esc(topic.title)}</h1>
+    <p class="topic-dek">${esc(topic.dek)}</p>
+    <div class="statusline"><span class="pill pass">✓ marked as read</span><span>testng-suite-runner.study</span></div>
+  `;
+}
+
+function navFooterHtml(topic){
+  const idx = topics.findIndex(t=>t.id===topic.id);
+  const prev = topics[idx-1];
+  const next = topics[idx+1];
+  return `<div class="topic-nav">
+    <div class="nav-btn${prev?'':' disabled'}" ${prev?`onclick="selectTopic('${prev.id}')"`:''}>
+      ${prev?`<div class="nlabel">← Previous</div><div class="ntitle">${esc(prev.title)}</div>`:''}
+    </div>
+    <div class="nav-btn next${next?'':' disabled'}" ${next?`onclick="selectTopic('${next.id}')"`:''}>
+      ${next?`<div class="nlabel">Next →</div><div class="ntitle">${esc(next.title)}</div>`:''}
+    </div>
+  </div>`;
+}
+
+function selectTopic(id){
+  currentId = id;
+  visited.add(id);
+  const topic = topics.find(t=>t.id===id);
+  if(topic.type==='interview') renderInterview(topic);
+  else if(topic.type==='quiz') renderQuiz(topic);
+  else renderTopic(topic);
+  buildSidebar(document.getElementById('searchInput') ? document.getElementById('searchInput').value : '');
+  updateSummary();
+  document.getElementById('main').scrollTop = 0;
+  closeMobileSidebar();
+}
+
+function renderTopic(topic){
+  mainInner.innerHTML = topicHeader(topic) + `<div class="prose">${topic.html}</div>` + navFooterHtml(topic);
+}
+
+function renderInterview(topic){
+  let body = `<div class="prose">`;
+  QA_DATA.forEach((qa,i)=>{
+    body += `<div class="acc-item" id="acc-${i}">
+      <div class="acc-q" onclick="toggleAcc(${i})"><span class="qnum">Q${i+1}</span><span class="qtext">${esc(qa.q)}</span>${chevronSvg('qcaret')}</div>
+      <div class="acc-a"><div class="acc-a-inner"><p>${esc(qa.a)}</p></div></div>
+    </div>`;
+  });
+  body += `</div>`;
+  mainInner.innerHTML = topicHeader(topic) + body + navFooterHtml(topic);
+}
+function toggleAcc(i){
+  document.getElementById('acc-'+i).classList.toggle('open');
+}
+
+function renderQuiz(topic){
+  let body = `<div class="quiz-wrap">`;
+  if(quizIndex >= QUIZ_DATA.length){
+    const score = quizAnswers.filter(a=>a && a.correct).length;
+    const pct = Math.round(score/QUIZ_DATA.length*100);
+    const msg = pct>=80 ? 'Strong grasp — you\u2019re close to interview ready.'
+              : pct>=50 ? 'Solid foundation — revisit the topics behind your missed questions before your interview.'
+              : 'Worth another pass through the suite topics before retaking this.';
+    body += `<div class="quiz-card quiz-result">
+      <div class="score">${score}/${QUIZ_DATA.length}</div>
+      <div class="scoretag">Total tests run: ${QUIZ_DATA.length}  ·  Passes: ${score}  ·  Failures: ${QUIZ_DATA.length-score}</div>
+      <p>${esc(msg)}</p>
+      <button class="quiz-btn" onclick="restartQuiz()">Restart Quiz</button>
+    </div>`;
+  } else {
+    const q = QUIZ_DATA[quizIndex];
+    const answer = quizAnswers[quizIndex];
+    body += `<div class="quiz-progress"><span>Question ${quizIndex+1} of ${QUIZ_DATA.length}</span><div class="quiz-dots">`;
+    QUIZ_DATA.forEach((_,i)=>{
+      let cls = 'qdot';
+      const a = quizAnswers[i];
+      if(a) cls += a.correct ? ' correct' : ' incorrect';
+      body += `<span class="${cls}"></span>`;
+    });
+    body += `</div></div>`;
+    body += `<div class="quiz-card">
+      <div class="quiz-assert">Assert.assertEquals(yourAnswer, expected) →</div>
+      <div class="quiz-q">${esc(q.q)}</div>
+      <div class="quiz-opts">`;
+    q.opts.forEach((opt,i)=>{
+      let cls = 'qopt' + (answer ? ' disabled' : '');
+      if(answer){
+        if(i===q.correct) cls += ' correct';
+        else if(i===answer.selected) cls += ' incorrect';
+      }
+      body += `<div class="${cls}" onclick="answerQuiz(${i})"><span class="letter">${String.fromCharCode(65+i)}</span><span>${esc(opt)}</span></div>`;
+    });
+    body += `</div>`;
+    if(answer){
+      body += `<div class="quiz-feedback show ${answer.correct?'pass':'fail'}">${answer.correct ? 'PASS — correct.' : 'FAIL — expected ' + String.fromCharCode(65+q.correct) + ') ' + esc(q.opts[q.correct])}
+        <div class="quiz-explain">${esc(q.explain)}</div></div>`;
+    }
+    body += `<div class="quiz-footer">
+      <button class="quiz-btn" onclick="prevQuiz()" ${quizIndex===0?'disabled':''}>← Previous</button>
+      <button class="quiz-btn" onclick="nextQuiz()" ${answer?'':'disabled'}>${quizIndex===QUIZ_DATA.length-1?'See results':'Next →'}</button>
+    </div>`;
+    body += `</div>`;
+  }
+  body += `</div>`;
+  mainInner.innerHTML = topicHeader(topic) + body;
+}
+function answerQuiz(i){
+  const q = QUIZ_DATA[quizIndex];
+  quizAnswers[quizIndex] = { selected:i, correct: i===q.correct };
+  renderQuiz(topics.find(t=>t.id==='quiz'));
+}
+function nextQuiz(){ quizIndex++; renderQuiz(topics.find(t=>t.id==='quiz')); }
+function prevQuiz(){ quizIndex = Math.max(0, quizIndex-1); renderQuiz(topics.find(t=>t.id==='quiz')); }
+function restartQuiz(){
+  quizIndex = 0;
+  quizAnswers = new Array(QUIZ_DATA.length).fill(null);
+  renderQuiz(topics.find(t=>t.id==='quiz'));
+}
+
+function copyCode(btn){
+  const block = btn.closest('.code-block').querySelector('pre.code');
+  const text = block.innerText;
+  function done(){
+    const old = btn.textContent;
+    btn.textContent = 'Copied';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1400);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, cb){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+  cb();
+}
+
+function closeMobileSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+document.getElementById('menuBtn').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+});
+document.getElementById('sidebarOverlay').addEventListener('click', closeMobileSidebar);
+
+/* Init */
+buildSidebar();
+selectTopic('intro');
+</script>
+</body>
+</html>
